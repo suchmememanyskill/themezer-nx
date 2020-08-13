@@ -22,19 +22,6 @@ int main(int argc, char* argv[])
     socketInitializeDefault();
     curl_global_init(CURL_GLOBAL_ALL);
 
-    /*
-    while(appletMainLoop()){
-        hidScanInput();
-        u64 kDown = hidKeysDown(CONTROLLER_P1_AUTO);
-        if (kDown & KEY_PLUS)
-            break;
-        consoleUpdate(NULL);
-    }
-    */
-
-    //cJSON *res = NULL;
-    //GetThemesList("https://api.themezer.ga/", "query{themeList(page:1,limit:5,target:\"ResidentMenu\"){id,creator{display_name},details{name,description}}}", &res);
-
     RequestInfo_t rI = {0, 20, 1, 0, 0, "", 0, 0, NULL, NULL};
     ShapeLinker_t *items = NULL;
 
@@ -57,8 +44,6 @@ int main(int argc, char* argv[])
     else 
         Log("Request failed");
     
-
-    //MakeRequest("https://api.themezer.ga/?query=query{themeList(limit:5){id}}", NULL);
 
     ShapeLinker_t *mainMenu = CreateMainMenu(items);
     MakeMenu(mainMenu, NULL);

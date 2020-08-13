@@ -50,21 +50,12 @@ char *GenImgLink(char *id){
     return request;
 }
 
-/*
-typedef struct {
-  const char *readptr;
-  size_t sizeleft;
-} write_request_t;
-*/
-
 #define CHUNK_SIZE 2048
 
 static size_t write_callback(char *ptr, size_t size, size_t nmemb, void *userdata)
 {
     size_t realsize = size * nmemb; 
     get_request_t *req = userdata;
-
-    //printf("receive chunk of %zu bytes\n", realsize);
 
     while (req->buflen < req->len + realsize + 1)
     {
@@ -77,30 +68,6 @@ static size_t write_callback(char *ptr, size_t size, size_t nmemb, void *userdat
 
     return realsize;
 }
-
-/*
-static size_t read_callback(void *dest, size_t size, size_t nmemb, void *userp)
-{
-  write_request_t *wt = userp;
-  size_t buffer_size = size*nmemb;
- 
-  if(wt->sizeleft) {
-      */
-    /* copy as much as possible from the source to the destination */ 
-    /*
-    size_t cA = wt->sizeleft;
-    if(cA > buffer_size)
-      cA = buffer_size;
-    memcpy(dest, wt->readptr, cA);
- 
-    wt->readptr += cA;
-    wt->sizeleft -= cA;
-    return cA;
-  }
- 
-  return 0;
-}
-*/
 
 CURL *CreateRequest(char *url, get_request_t *data){
     CURL *curl = NULL;
@@ -122,35 +89,7 @@ CURL *CreateRequest(char *url, get_request_t *data){
 }
 
 int MakeJsonRequest(char *url, cJSON **response){
-    //CURL *curl;
-    //CURLcode res = -1;
     get_request_t req = {0};
-    /*
-    curl = curl_easy_init();
-    if (curl){
-        curl_easy_setopt(curl, CURLOPT_URL, url);
-        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
-        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
-
-        req.buffer = malloc(CHUNK_SIZE);
-        req.buflen = CHUNK_SIZE;
-
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &req);
-
-        res = curl_easy_perform(curl);
-        Log(CopyTextArgsUtil("Result = %u\n",res));
-        if (!res){
-            if (response != NULL){
-                *response = cJSON_Parse(req.buffer);
-            }
-
-            Log(req.buffer);
-            free(req.buffer);
-        }
-    }
-    return res;
-    */
 
     int res;
     CURL *curl = CreateRequest(url, &req);
@@ -161,7 +100,7 @@ int MakeJsonRequest(char *url, cJSON **response){
             *response = cJSON_Parse(req.buffer);
         }
 
-        Log(req.buffer);
+        //Log(req.buffer);
         free(req.buffer);
     }
 
@@ -183,71 +122,6 @@ int MakeImageRequest(char *url, SDL_Texture **img){
     curl_easy_cleanup(curl);
     return res;
 }
-
-
-/*
-int GetThemesList(char *url, char *data, cJSON **response){
-    CURL *curl;
-    CURLcode res = -1;
-    get_request_t req = {0};
-
-    write_request_t wt;
- 
-    wt.readptr = data;
-    wt.sizeleft = strlen(data);
-
-    curl = curl_easy_init();
-    if (curl){
-        curl_easy_setopt(curl, CURLOPT_URL, url);
-        curl_easy_setopt(curl, CURLOPT_USERAGENT, "SuchMeme/ApiParser");
-        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
-        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
-        curl_easy_setopt(curl, CURLOPT_POST, 1L);
-
-        struct curl_slist *list = NULL;
-        list = curl_slist_append(list, "Expect:");
-        list = curl_slist_append(list, "Content-Type: application/json");
-        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, list);
-
-        curl_easy_setopt(curl, CURLOPT_READFUNCTION, read_callback);
-        curl_easy_setopt(curl, CURLOPT_READDATA, &wt);
-        /*
-        curl_mime *mime = curl_mime_init(curl);
-        curl_mimepart *part = curl_mime_addpart(mime);
-        curl_mime_data(part, data, CURL_ZERO_TERMINATED);
-        curl_mime_name(part, "data");
-
-        curl_easy_setopt(curl, CURLOPT_MIMEPOST, mime);
-        */
-
-        //curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
-        //curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, strlen(data) + 1);
-        //curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-        //curl_easy_setopt(curl, CURLOPT_DEFAULT_PROTOCOL, "https");
-/*
-        req.buffer = malloc(CHUNK_SIZE);
-        req.buflen = CHUNK_SIZE;
-
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&req);
-
-        res = curl_easy_perform(curl);
-        Log(CopyTextArgsUtil("Result = %u\n",res));
-        if (!res){
-            *response = cJSON_Parse(req.buffer);
-            Log(req.buffer);
-            free(req.buffer);
-        }
-
-        curl_slist_free_all(list);
-            //printf(req.buffer);
-    }
-
-    curl_easy_cleanup(curl);
-    return res;
-}
-*/
 
 void FreeThemes(RequestInfo_t *rI){
     if (!rI->themes)
@@ -379,34 +253,3 @@ int FillThemeArrayWithImg(RequestInfo_t *rI){
 
     return 0;
 }
-
-/*
-ShapeLinker_t *GenListItemsFromJson(cJSON *json){
-    ShapeLinker_t *list = NULL;
-
-    cJSON *data = cJSON_GetObjectItemCaseSensitive(json, "data");
-    if (data){
-        //Log("Got data!\n");
-        cJSON *themesList = cJSON_GetObjectItemCaseSensitive(data, "themesList");
-        if (themesList){
-            //Log("Got themesList!\n");
-            cJSON *theme = NULL;
-
-            cJSON_ArrayForEach(theme, themesList){
-                cJSON *details = cJSON_GetObjectItemCaseSensitive(theme, "details");
-                cJSON *name = cJSON_GetObjectItemCaseSensitive(details, "name");
-                
-                cJSON *creator = cJSON_GetObjectItemCaseSensitive(theme, "creator");
-                cJSON *discord_user = cJSON_GetObjectItemCaseSensitive(creator, "discord_user");
-                cJSON *username = cJSON_GetObjectItemCaseSensitive(discord_user, "username");
-
-                if (cJSON_IsString(name) && cJSON_IsString(username) && name->valuestring != NULL && username->valuestring != NULL)
-                    ShapeLinkAdd(&list, ListItemCreate(COLOR(255,255,255,255), COLOR(150,150,150,255), NULL, name->valuestring, username->valuestring), ListItemType);
-            }
-        }
-    }
-    
-
-    return list;
-}
-*/
