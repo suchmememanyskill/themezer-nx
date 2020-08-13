@@ -29,6 +29,7 @@ typedef struct {
 
 typedef struct {
     Transfer_t *transfers;
+    int queueOffset;
     CURLM *transferer;
     bool finished;
 } TransferInfo_t;
@@ -54,8 +55,8 @@ int MakeJsonRequest(char *url, cJSON **response);
 char *GenLink(RequestInfo_t *rI);
 ShapeLinker_t *GenListItemList(RequestInfo_t *rI);
 int GenThemeArray(RequestInfo_t *rI);
-int FillThemeArrayWithImg(RequestInfo_t *rI);
 void SetDefaultsRequestInfo(RequestInfo_t *rI);
 int DownloadThemeFromID(char *id, char *path);
 int HandleDownloadQueue(Context_t *ctx);
 int AddThemeImagesToDownloadQueue(RequestInfo_t *rI);
+int CleanupTransferInfo(RequestInfo_t *rI);

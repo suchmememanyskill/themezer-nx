@@ -356,3 +356,5 @@ themezer-nx/build/
 *.nacp
 
 *.nro
+
+*.exe

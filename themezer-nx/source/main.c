@@ -29,8 +29,9 @@ int main(int argc, char* argv[])
     InitDesign();
     socketInitializeDefault();
     curl_global_init(CURL_GLOBAL_ALL);
+    //nxlinkStdio();
 
-    RequestInfo_t rI = {0, 20, 1, 0, 0, "", 0, 0, 0, NULL, NULL, {NULL, NULL, true}};
+    RequestInfo_t rI = {0, 20, 1, 0, 0, "", 0, 0, 0, NULL, NULL, {NULL, 0, NULL, true}};
     SetDefaultsRequestInfo(&rI);
     ShapeLinker_t *items = NULL;
 
@@ -38,14 +39,6 @@ int main(int argc, char* argv[])
 
     if (!MakeJsonRequest(GenLink(&rI), &rI.response)){
         if (!(res = GenThemeArray(&rI))){
-            /*
-            if (!FillThemeArrayWithImg(&rI)){
-                items = GenListItemList(&rI);
-            }
-            else {
-                Log("Something is fucked with the filler");
-            }
-            */
             items = GenListItemList(&rI);
             AddThemeImagesToDownloadQueue(&rI);
         }
@@ -56,10 +49,8 @@ int main(int argc, char* argv[])
         Log("Request failed");
     
 
-    
-
     ShapeLinker_t *mainMenu = (items != NULL) ? CreateMainMenu(items, &rI) : errorMenu();
-    MakeMenu(mainMenu, NULL);
+    MakeMenu(mainMenu, NULL, HandleDownloadQueue);
     ShapeLinkDispose(&mainMenu);
     
     ExitDesign();

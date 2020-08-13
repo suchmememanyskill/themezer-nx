@@ -171,7 +171,6 @@ char *GetThemeDownloadURL(char *id){
 int DownloadThemeFromID(char *id, char *path){
     int res = -1;
     char *url = GetThemeDownloadURL(id);
-    Log(CopyTextArgsUtil("URL: %s\n", url));
 
     if (url){
         res = MakeDownloadRequest(url, path);
@@ -284,54 +283,38 @@ ShapeLinker_t *GenListItemList(RequestInfo_t *rI){
     ShapeLinker_t *link = NULL;
 
     for (int i = 0; i < rI->curPageItemCount; i++){
-        ShapeLinkAdd(&link, ListItemCreate(COLOR(255,255,255,255), COLOR(170, 170, 170, 255), rI->themes[i].preview, rI->themes[i].name, rI->themes[i].creator), ListItemType);
+        ShapeLinkAdd(&link, ListItemCreate(COLOR(255,255,255,255), COLOR(170, 170, 170, 255), (rI->themes[i].preview) ? rI->themes[i].preview : loadingScreen, rI->themes[i].name, rI->themes[i].creator), ListItemType);
     }
 
     return link;
 }
-/*
-int FillThemeArrayWithImgAsync(RequestInfo_t *rI){
-    int res = 0;
-
-    ShapeLinker_t *link = NULL;
-    ShapeLinkAdd(&link, RectangleCreate(POS(300, 150, SCREEN_W - 600, SCREEN_H - 300), COLOR_TOPBAR, 1), RectangleType);
-    ShapeLinkAdd(&link, TextCenteredCreate(POS(300, 150, SCREEN_W - 600, SCREEN_H - 350), "Fetching Theme Data...", COLOR_WHITE, FONT_TEXT[FSize35]), TextCenteredType);
-    ProgressBar_t *pb = ProgressBarCreate(POS(300, 520, SCREEN_W - 600, 50), COLOR_GREEN, COLOR_WHITE, ProgressBarStyleSize, 0);
-    ShapeLinkAdd(&link, pb, ProgressBarType);
-
-    int count = 0;
-
-    for (int i = 0; i < rI->curPageItemCount; i++){
-        if (!rI->themes[i].preview){
-                count++;
-        }
-    }
-
-    return 0;
-}
-*/
 
 int AddThemeImagesToDownloadQueue(RequestInfo_t *rI){
     rI->tInfo.transfers = calloc(sizeof(Transfer_t), rI->curPageItemCount);
     rI->tInfo.transferer = curl_multi_init();
     rI->tInfo.finished = false;
-    curl_multi_setopt(rI->tInfo.transferer, CURLMOPT_MAXCONNECTS, (long)5);
+    curl_multi_setopt(rI->tInfo.transferer, CURLMOPT_MAXCONNECTS, (long)8);
 
     for (int i = 0; i < rI->curPageItemCount; i++){
             rI->tInfo.transfers[i].transfer = CreateRequest(rI->themes[i].imgLink, &rI->tInfo.transfers[i].data);
             rI->tInfo.transfers[i].index = i;
-            curl_easy_setopt(rI->tInfo.transfers[i].transfer, CURLOPT_PRIVATE, &rI->tInfo.transfers[i].index);
-            curl_multi_add_handle(rI->tInfo.transferer, rI->tInfo.transfers[i].transfer);
+            curl_easy_setopt(rI->tInfo.transfers[i].transfer, CURLOPT_PRIVATE, &rI->tInfo.transfers[i].index); 
+    }
+
+    rI->tInfo.queueOffset = MIN(8, rI->curPageItemCount);
+
+    for (int i = 0; i < rI->tInfo.queueOffset; i++){
+        curl_multi_add_handle(rI->tInfo.transferer, rI->tInfo.transfers[i].transfer);
     }
 
     return 0;
 }
 
 int CleanupTransferInfo(RequestInfo_t *rI){
+    if (rI->tInfo.finished)
+        return 0;
 
-    Log("Cleaning up download...\n");
-
-    for (int i = 0; i < rI->curPageItemCount; i++){
+    for (int i = 0; i < rI->tInfo.queueOffset; i++){
         curl_multi_remove_handle(rI->tInfo.transferer, rI->tInfo.transfers[i].transfer);
         curl_easy_cleanup(rI->tInfo.transfers[i].transfer);
     }
@@ -362,45 +345,26 @@ int HandleDownloadQueue(Context_t *ctx){
             curl_easy_getinfo(e, CURLINFO_PRIVATE, &index);
 
             if (msg->data.result != CURLE_OK){
-                Log(CopyTextArgsUtil("Something went fucky with the downloader, index %d, %d\n", *index, msg->data.result));
+                //Log(CopyTextArgsUtil("Something went fucky with the downloader, index %d, %d\n", *index, msg->data.result));
             }
             else {
-                Log(CopyTextArgsUtil("Download of index %d finished!\n", *index));
+                //Log(CopyTextArgsUtil("Download of index %d finished!\n", *index));
                 get_request_t *req = &rI->tInfo.transfers[*index].data;
                 rI->themes[*index].preview = LoadImageMemSDL(req->buffer, req->len);
                 free(req->buffer);
                 ListItem_t *li = ShapeLinkOffset(gv->text, *index)->item;
                 li->leftImg = rI->themes[*index].preview;
             }
+            
+            if (rI->curPageItemCount > rI->tInfo.queueOffset){
+                curl_multi_add_handle(rI->tInfo.transferer, rI->tInfo.transfers[rI->tInfo.queueOffset++].transfer);
+            }
+            
         }
     }
 
     if (!running_handles){
         CleanupTransferInfo(rI);
-    }
-
-    return 0;
-}
-
-int FillThemeArrayWithImg(RequestInfo_t *rI){
-    int res = 0;
-
-    ShapeLinker_t *link = NULL;
-    ShapeLinkAdd(&link, RectangleCreate(POS(300, 150, SCREEN_W - 600, SCREEN_H - 300), COLOR_TOPBAR, 1), RectangleType);
-    ShapeLinkAdd(&link, TextCenteredCreate(POS(300, 150, SCREEN_W - 600, SCREEN_H - 350), "Fetching Theme Data...", COLOR_WHITE, FONT_TEXT[FSize35]), TextCenteredType);
-    ProgressBar_t *pb = ProgressBarCreate(POS(300, 520, SCREEN_W - 600, 50), COLOR_GREEN, COLOR_WHITE, ProgressBarStyleSize, 0);
-    ShapeLinkAdd(&link, pb, ProgressBarType);
-
-    for (int i = 0; i < rI->curPageItemCount; i++){
-        if (!rI->themes[i].preview){
-            pb->percentage = i * 100 / rI->curPageItemCount;  
-            RenderShapeLinkList(link);
-            if ((res = MakeImageRequest(rI->themes[i].imgLink, &rI->themes[i].preview))){
-                Log(rI->themes[i].imgLink);
-                return -1;
-            }
-                
-        }
     }
 
     return 0;
