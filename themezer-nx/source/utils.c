@@ -1,6 +1,7 @@
 #include "utils.h"
 #include <switch.h>
 #include <stdlib.h>
+#include <JAGL.h>
 
 char* showKeyboard(char* message, u64 size){
 	SwkbdConfig	skp; 
@@ -34,4 +35,20 @@ int isStringNullOrEmpty(const char *in){
 	}
 
 	return 1;
+}
+
+char *SanitizeString(const char *name)
+{
+	const char* forbiddenChars = "/?<>\\:*|\".";
+
+	char *src = CopyTextUtil(name);
+	char *c = src;
+	while (*c)
+	{
+		if (strchr(forbiddenChars, *c))
+			*c = '_';
+		c++;
+	}
+
+	return src;
 }

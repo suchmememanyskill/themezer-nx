@@ -4,6 +4,7 @@
 #include "libs/cJSON.h"
 #include "design.h"
 #include <JAGL.h>
+#include "utils.h"
 
 typedef struct {
     unsigned char *buffer;
@@ -37,16 +38,10 @@ char *GenLink(RequestInfo_t *rI){
     }
     
     static char request[0x400];
-    sprintf(request, "https://api.themezer.ga/?query=query{themeList(target:\"%s\",page:%d,limit:%d,sort:\"%s\",order:\"%s\",query:%s){id,creator{display_name},details{name,description},categories,last_updated,dl_count,like_count}}", requestTargets[rI->target], rI->page, rI->limit, requestSorts[rI->sort], requestOrders[rI->order], searchQuoted);
+    sprintf(request, "https://api.themezer.ga/?query=query{themeList(target:\"%s\",page:%d,limit:%d,sort:\"%s\",order:\"%s\",query:%s){id,creator{display_name},details{name,description},categories,last_updated,dl_count,like_count,preview{original}}}", requestTargets[rI->target], rI->page, rI->limit, requestSorts[rI->sort], requestOrders[rI->order], searchQuoted);
     
     free(searchQuoted);
 
-    return request;
-}
-
-char *GenImgLink(char *id){
-    static char request[0x50];
-    sprintf(request, "https://api.themezer.ga/cdn/themes/%s/screenshot.jpg", id);
     return request;
 }
 
@@ -202,6 +197,7 @@ void FreeThemes(RequestInfo_t *rI){
         free(rI->themes[i].name);
         free(rI->themes[i].description);
         free(rI->themes[i].lastUpdated);
+        free(rI->themes[i].imgLink);
         SDL_DestroyTexture(rI->themes[i].preview);
     }
 
@@ -251,9 +247,11 @@ int GenThemeArray(RequestInfo_t *rI){
                 cJSON *last_updated = cJSON_GetObjectItemCaseSensitive(theme, "last_updated");
                 cJSON *dl_count = cJSON_GetObjectItemCaseSensitive(theme, "dl_count");
                 cJSON *like_count = cJSON_GetObjectItemCaseSensitive(theme, "like_count");
+                cJSON *preview = cJSON_GetObjectItemCaseSensitive(theme, "preview");
+                cJSON *original = cJSON_GetObjectItemCaseSensitive(preview, "original");
 
                 if (cJSON_IsNumber(dl_count) && cJSON_IsNumber(like_count) && cJSON_IsString(last_updated) && (cJSON_IsString(description) || cJSON_IsNull(description)) &&\
-                cJSON_IsString(name) && cJSON_IsString(display_name) && cJSON_IsString(id)){
+                cJSON_IsString(name) && cJSON_IsString(display_name) && cJSON_IsString(id) && cJSON_IsString(original)){
                     
                     rI->themes[i].dlCount = dl_count->valueint;
                     rI->themes[i].likeCount = like_count->valueint;
@@ -264,11 +262,10 @@ int GenThemeArray(RequestInfo_t *rI){
                     else
                         rI->themes[i].description = CopyTextUtil(description->valuestring);
                     
-                    rI->themes[i].name = CopyTextUtil(name->valuestring);
-                    rI->themes[i].creator = CopyTextUtil(display_name->valuestring);
+                    rI->themes[i].name = SanitizeString(name->valuestring);
+                    rI->themes[i].creator = SanitizeString(display_name->valuestring);
                     rI->themes[i].id = CopyTextUtil(id->valuestring);
-                    
-                    // Add preview later!
+                    rI->themes[i].imgLink = CopyTextUtil(original->valuestring);
                 }
                 else {
                     return -3;
@@ -284,6 +281,8 @@ int GenThemeArray(RequestInfo_t *rI){
     return res;
 }
 
+
+
 ShapeLinker_t *GenListItemList(RequestInfo_t *rI){
     ShapeLinker_t *link = NULL;
 
@@ -293,14 +292,34 @@ ShapeLinker_t *GenListItemList(RequestInfo_t *rI){
 
     return link;
 }
+/*
+int FillThemeArrayWithImgAsync(RequestInfo_t *rI){
+    int res = 0;
 
+    ShapeLinker_t *link = NULL;
+    ShapeLinkAdd(&link, RectangleCreate(POS(300, 150, SCREEN_W - 600, SCREEN_H - 300), COLOR_TOPBAR, 1), RectangleType);
+    ShapeLinkAdd(&link, TextCenteredCreate(POS(300, 150, SCREEN_W - 600, SCREEN_H - 350), "Fetching Theme Data...", COLOR_WHITE, FONT_TEXT[FSize35]), TextCenteredType);
+    ProgressBar_t *pb = ProgressBarCreate(POS(300, 520, SCREEN_W - 600, 50), COLOR_GREEN, COLOR_WHITE, ProgressBarStyleSize, 0);
+    ShapeLinkAdd(&link, pb, ProgressBarType);
+
+    int count = 0;
+
+    for (int i = 0; i < rI->curPageItemCount; i++){
+        if (!rI->themes[i].preview){
+                count++;
+        }
+    }
+
+    return 0;
+}
+*/
 
 int FillThemeArrayWithImg(RequestInfo_t *rI){
     int res = 0;
 
     ShapeLinker_t *link = NULL;
     ShapeLinkAdd(&link, RectangleCreate(POS(300, 150, SCREEN_W - 600, SCREEN_H - 300), COLOR_TOPBAR, 1), RectangleType);
-    ShapeLinkAdd(&link, TextCenteredCreate(POS(300, 150, SCREEN_W - 600, SCREEN_H - 350), "Downloading theme images...", COLOR_WHITE, FONT_TEXT[FSize35]), TextCenteredType);
+    ShapeLinkAdd(&link, TextCenteredCreate(POS(300, 150, SCREEN_W - 600, SCREEN_H - 350), "Fetching Theme Data...", COLOR_WHITE, FONT_TEXT[FSize35]), TextCenteredType);
     ProgressBar_t *pb = ProgressBarCreate(POS(300, 520, SCREEN_W - 600, 50), COLOR_GREEN, COLOR_WHITE, ProgressBarStyleSize, 0);
     ShapeLinkAdd(&link, pb, ProgressBarType);
 
@@ -308,7 +327,8 @@ int FillThemeArrayWithImg(RequestInfo_t *rI){
         if (!rI->themes[i].preview){
             pb->percentage = i * 100 / rI->curPageItemCount;  
             RenderShapeLinkList(link);
-            if ((res = MakeImageRequest(GenImgLink(rI->themes[i].id), &rI->themes[i].preview))){
+            if ((res = MakeImageRequest(rI->themes[i].imgLink, &rI->themes[i].preview))){
+                Log(rI->themes[i].imgLink);
                 return -1;
             }
                 

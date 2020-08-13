@@ -83,7 +83,7 @@ ShapeLinker_t *CreateSelectMenu(ThemeInfo_t *target){
     ShapeLinkAdd(&out, RectangleCreate(POS(50, 100, SCREEN_W - 100, SCREEN_H - 150), COLOR_CENTERLISTBG, 1), RectangleType);
     ShapeLinkAdd(&out, RectangleCreate(POS(50, 50, SCREEN_W - 150, 50), COLOR_TOPBAR, 1), RectangleType);
 
-    ShapeLinkAdd(&out, TextCenteredCreate(POS(55, 50, 0 /* 0 width left alligns it */, 50), target->name, COLOR_WHITE, FONT_TEXT[FSize35]), TextCenteredType);
+    ShapeLinkAdd(&out, TextCenteredCreate(POS(55, 50, 0 /* 0 width left alligns it */, 50), target->name, COLOR_WHITE, FONT_TEXT[FSize33]), TextCenteredType);
 
     ShapeLinkAdd(&out, ButtonCreate(POS(SCREEN_W - 100, 50, 50, 50), COLOR_TOPBAR, COLOR_RED, COLOR_WHITE, COLOR_TOPBARSELECTION, 0, ButtonStyleFlat, NULL, NULL, exitFunc), ButtonType);
     ShapeLinkAdd(&out, ImageCreate(XIcon, POS(SCREEN_W - 100, 50, 50, 50), 0), ImageType);
@@ -91,8 +91,8 @@ ShapeLinker_t *CreateSelectMenu(ThemeInfo_t *target){
     ShapeLinkAdd(&out, ButtonCreate(POS(50, 100, 860, 488), COLOR_CENTERLISTBG, COLOR_WHITE, COLOR_WHITE, COLOR_CENTERLISTSELECTION, 0, ButtonStyleFlat, NULL, NULL, EnlargePreviewImage), ButtonType);
     ShapeLinkAdd(&out, ImageCreate(target->preview, POS(55, 105, 850, 478), 0), ImageType);
 
-    ShapeLinkAdd(&out, ButtonCreate(POS(915, 110, SCREEN_W - 980, 60), COLOR_INSTBTN, COLOR_GREEN, COLOR_WHITE, COLOR_INSTBTNSEL, 0, ButtonStyleFlat, "Install Theme", FONT_TEXT[FSize35], NULL), ButtonType);
-    ShapeLinkAdd(&out, ButtonCreate(POS(915, 180, SCREEN_W - 980, 60), COLOR_DLBTN, COLOR_GREEN, COLOR_WHITE, COLOR_DLBTNSEL, 0, ButtonStyleFlat, "Download Theme", FONT_TEXT[FSize35], DownloadThemeButton), ButtonType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(915, 110, SCREEN_W - 980, 60), COLOR_INSTBTN, COLOR_GREEN, COLOR_WHITE, COLOR_INSTBTNSEL, 0, ButtonStyleFlat, "Install Theme", FONT_TEXT[FSize33], NULL), ButtonType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(915, 180, SCREEN_W - 980, 60), COLOR_DLBTN, COLOR_GREEN, COLOR_WHITE, COLOR_DLBTNSEL, 0, ButtonStyleFlat, "Download Theme", FONT_TEXT[FSize33], DownloadThemeButton), ButtonType);
 
     char *info = CopyTextArgsUtil("Creator: %s\n\nLast Updated: %s\n\nDownload Count: %d\nLike Count: %d\nID: t%s", target->creator, target->lastUpdated, target->dlCount, target->likeCount, target->id);
     char *desc = CopyTextArgsUtil("Description: %s", target->description);
@@ -130,17 +130,17 @@ int MakeRequestAsCtx(Context_t *ctx, RequestInfo_t *rI){
         if (!(res = GenThemeArray(rI))){
             if (!FillThemeArrayWithImg(rI)){
                 items = GenListItemList(rI);
+
+                ShapeLinker_t *all = ctx->all;
+                ListGrid_t *gv = ShapeLinkFind(all, ListGridType)->item;
+                TextCentered_t *pageText = ShapeLinkFind(all, TextCenteredType)->item;
+                gv->text = items;
+                gv->highlight = 0;
+                free(pageText->text.text);
+                pageText->text.text = CopyTextArgsUtil("Page %d/%d", rI->page, rI->pageCount);
             }
         }
     }
-
-    ShapeLinker_t *all = ctx->all;
-    ListGrid_t *gv = ShapeLinkFind(all, ListGridType)->item;
-    TextCentered_t *pageText = ShapeLinkFind(all, TextCenteredType)->item;
-    gv->text = items;
-    gv->highlight = 0;
-    free(pageText->text.text);
-    pageText->text.text = CopyTextArgsUtil("Page %d/%d", rI->page, rI->pageCount);
 
     return res;
 }
@@ -214,7 +214,7 @@ ShapeLinker_t *CreateMainMenu(ShapeLinker_t *listItems, RequestInfo_t *rI) {
     ShapeLinkAdd(&out, ButtonCreate(POS(1160, 0, 120, 60), COLOR_TOPBARBUTTONS, COLOR_BTN5, COLOR_WHITE, COLOR_HIGHLIGHT, 0, ButtonStyleBottomStrip, NULL, NULL, NextPageButton), ButtonType);
     ShapeLinkAdd(&out, ImageCreate(arrowRIcon, POS(1190, 0, 60, 60), 0), ImageType);
 
-    ShapeLinkAdd(&out, ListGridCreate(POS(0, 60, SCREEN_W, SCREEN_H - 60), 4, 260, COLOR_CENTERLISTBG, COLOR_CENTERLISTSELECTION, COLOR_CENTERLISTPRESS, (listItems) ? 0 : LIST_DISABLED, listItems, ThemeSelect, NULL, FONT_TEXT[FSize28]), ListGridType);
+    ShapeLinkAdd(&out, ListGridCreate(POS(0, 60, SCREEN_W, SCREEN_H - 60), 4, 260, COLOR_CENTERLISTBG, COLOR_CENTERLISTSELECTION, COLOR_CENTERLISTPRESS, (listItems) ? 0 : LIST_DISABLED, listItems, ThemeSelect, NULL, FONT_TEXT[FSize25]), ListGridType);
     // 4, 260
         
     ShapeLinkAdd(&out, rI, DataType);

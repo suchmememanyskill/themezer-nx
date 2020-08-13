@@ -12,6 +12,14 @@
 
 #include "curl.h"
 
+ShapeLinker_t *errorMenu(){
+    ShapeLinker_t *out = NULL;
+    
+    ShapeLinkAdd(&out, ButtonCreate(POS(0, 0, SCREEN_W, SCREEN_H), COLOR_BLACK, COLOR_BLACK, COLOR_WHITE, COLOR_BLACK, 0, ButtonStyleFlat, "Init failed! Press + or A to exit", FONT_TEXT[FSize35], exitFunc), ButtonType);
+
+    return out;
+}
+
 int main(int argc, char* argv[])
 {
     //consoleInit(NULL);
@@ -22,7 +30,7 @@ int main(int argc, char* argv[])
     socketInitializeDefault();
     curl_global_init(CURL_GLOBAL_ALL);
 
-    RequestInfo_t rI = {0, 20, 1, 0, 0, "", 0, 0, NULL, NULL};
+    RequestInfo_t rI = {0, 20, 1, 0, 0, "", 0, 0, 0, NULL, NULL};
     SetDefaultsRequestInfo(&rI);
     ShapeLinker_t *items = NULL;
 
@@ -45,7 +53,9 @@ int main(int argc, char* argv[])
         Log("Request failed");
     
 
-    ShapeLinker_t *mainMenu = CreateMainMenu(items, &rI);
+    
+
+    ShapeLinker_t *mainMenu = (items != NULL) ? CreateMainMenu(items, &rI) : errorMenu();
     MakeMenu(mainMenu, NULL);
     ShapeLinkDispose(&mainMenu);
     

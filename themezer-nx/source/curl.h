@@ -8,6 +8,7 @@ typedef struct {
     char *name;
     char *description;
     char *lastUpdated;
+    char *imgLink;
     int dlCount;
     int likeCount;
     SDL_Texture *preview;
