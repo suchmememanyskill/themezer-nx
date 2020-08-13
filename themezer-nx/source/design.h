@@ -1,5 +1,6 @@
 #pragma once
 #include <JAGL.h>
+#include "curl.h"
 
 #define COLOR_WHITE COLOR(255,255,255,255)
 #define COLOR_GREY COLOR(66,66,68,255)
@@ -54,6 +55,12 @@
 #define COLOR_BTN4 COLOR(0, 255, 203, 255)
 #define COLOR_BTN5 COLOR_BLUE
 
+#define COLOR_DLBTN COLOR(144, 8, 107, 255)
+#define COLOR_DLBTNSEL COLOR(183, 11, 137, 255)
+
+#define COLOR_INSTBTN COLOR(8, 143, 97, 255)
+#define COLOR_INSTBTNSEL COLOR(10,175,118,255)
+
 //xtern SDL_Texture *folderIcon;
 //xtern SDL_Texture *folderSIcon;
 //xtern SDL_Texture *fileSIcon;
@@ -64,4 +71,4 @@ int FolderExplorer(Context_t *ctx);
 int exitFunc(Context_t *ctx);
 int ButtonHandlerBExit(Context_t *ctx);
 ShapeLinker_t *CreateFileExplorerMenu(ShapeLinker_t *dirList, char *curPath);
-ShapeLinker_t *CreateMainMenu(ShapeLinker_t *listItems);
+ShapeLinker_t *CreateMainMenu(ShapeLinker_t *listItems, RequestInfo_t *rI);

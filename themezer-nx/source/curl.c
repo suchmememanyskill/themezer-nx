@@ -50,7 +50,13 @@ char *GenImgLink(char *id){
     return request;
 }
 
-#define CHUNK_SIZE 2048
+char *GenNxThemeReqLink(char *id){
+    static char request[0x50];
+    sprintf(request, "https://api.themezer.ga/?query=query{nxinstaller(id:\"%s\"){themes{url}}}", id);
+    return request;
+}
+
+#define CHUNK_SIZE 32768
 
 static size_t write_callback(char *ptr, size_t size, size_t nmemb, void *userdata)
 {
@@ -123,11 +129,74 @@ int MakeImageRequest(char *url, SDL_Texture **img){
     return res;
 }
 
+int MakeDownloadRequest(char *url, char *path){
+    get_request_t req = {0};
+    int res;
+    CURL *curl = CreateRequest(url, &req);
+
+    if (!(res = curl_easy_perform(curl))){
+        FILE *fp = fopen(path, "wb");
+        if (fp){
+            fwrite(req.buffer, req.len, 1, fp);
+            fclose(fp);
+        }
+        else {
+            res = -1;
+        }
+    }
+
+    curl_easy_cleanup(curl);
+    return res;
+}
+
+char *GetThemeDownloadURL(char *id){
+    cJSON *list;
+    char *out = NULL;
+
+    if (MakeJsonRequest(GenNxThemeReqLink(id), &list)){
+        return NULL;
+    }
+
+    cJSON *data = cJSON_GetObjectItemCaseSensitive(list, "data");
+    if (data){
+        cJSON *themes = cJSON_GetObjectItemCaseSensitive(data, "themes");
+        if (themes){
+            cJSON *firstTheme = themes->child;
+            if (firstTheme){
+                cJSON *url = cJSON_GetObjectItemCaseSensitive(firstTheme, "url");
+                if (cJSON_IsString(url)){
+                    out = CopyTextUtil(url->valuestring);
+                }
+            }
+        }
+    }
+
+    if (list)
+        cJSON_Delete(list);
+
+    return out;
+}
+
+int DownloadThemeFromID(char *id, char *path){
+    int res = -1;
+    char *url = GetThemeDownloadURL(id);
+    Log(CopyTextArgsUtil("URL: %s\n", url));
+
+    if (url){
+        res = MakeDownloadRequest(url, path);
+        free(url);
+    }
+
+    return res;
+}
+
+#define MIN(x, y) ((x < y) ? x : y)
+
 void FreeThemes(RequestInfo_t *rI){
     if (!rI->themes)
         return;
 
-    for (int i = 0; i < rI->itemCount; i++){
+    for (int i = 0; i < rI->curPageItemCount; i++){
         free(rI->themes[i].id);
         free(rI->themes[i].creator);
         free(rI->themes[i].name);
@@ -139,8 +208,6 @@ void FreeThemes(RequestInfo_t *rI){
     free(rI->themes);
     rI->themes = NULL;
 }
-
-#define MIN(x, y) ((x < y) ? x : y)
 
 int GenThemeArray(RequestInfo_t *rI){
     if (rI->response == NULL)
@@ -164,10 +231,9 @@ int GenThemeArray(RequestInfo_t *rI){
         if (rI->itemCount <= 0)
             return -2;
 
-        int size = MIN(rI->itemCount, rI->limit);
-
         FreeThemes(rI);
-        rI->themes = calloc(sizeof(ThemeInfo_t), size);
+        rI->curPageItemCount = MIN(rI->limit, rI->itemCount - rI->limit * (rI->page - 1));
+        rI->themes = calloc(sizeof(ThemeInfo_t), rI->curPageItemCount);
 
         cJSON *themesList = cJSON_GetObjectItemCaseSensitive(data, "themeList");
 
@@ -220,9 +286,8 @@ int GenThemeArray(RequestInfo_t *rI){
 
 ShapeLinker_t *GenListItemList(RequestInfo_t *rI){
     ShapeLinker_t *link = NULL;
-    int size = MIN(rI->itemCount, rI->limit);
 
-    for (int i = 0; i < size; i++){
+    for (int i = 0; i < rI->curPageItemCount; i++){
         ShapeLinkAdd(&link, ListItemCreate(COLOR(255,255,255,255), COLOR(170, 170, 170, 255), rI->themes[i].preview, rI->themes[i].name, rI->themes[i].creator), ListItemType);
     }
 
@@ -231,7 +296,6 @@ ShapeLinker_t *GenListItemList(RequestInfo_t *rI){
 
 
 int FillThemeArrayWithImg(RequestInfo_t *rI){
-    int size = MIN(rI->itemCount, rI->limit);
     int res = 0;
 
     ShapeLinker_t *link = NULL;
@@ -240,9 +304,9 @@ int FillThemeArrayWithImg(RequestInfo_t *rI){
     ProgressBar_t *pb = ProgressBarCreate(POS(300, 520, SCREEN_W - 600, 50), COLOR_GREEN, COLOR_WHITE, ProgressBarStyleSize, 0);
     ShapeLinkAdd(&link, pb, ProgressBarType);
 
-    for (int i = 0; i < size; i++){
+    for (int i = 0; i < rI->curPageItemCount; i++){
         if (!rI->themes[i].preview){
-            pb->percentage = i * 100 / size;  
+            pb->percentage = i * 100 / rI->curPageItemCount;  
             RenderShapeLinkList(link);
             if ((res = MakeImageRequest(GenImgLink(rI->themes[i].id), &rI->themes[i].preview))){
                 return -1;
@@ -252,4 +316,13 @@ int FillThemeArrayWithImg(RequestInfo_t *rI){
     }
 
     return 0;
+}
+
+void SetDefaultsRequestInfo(RequestInfo_t *rI){
+    rI->target = 0;
+    rI->limit = 20;
+    rI->page = 1;
+    rI->sort = 0;
+    rI->order = 0;
+    rI->search = CopyTextUtil("");
 }

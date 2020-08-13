@@ -22,6 +22,7 @@ typedef struct {
     char *search;
     int pageCount;
     int itemCount;
+    int curPageItemCount;
     cJSON *response;
     ThemeInfo_t *themes;
 } RequestInfo_t;
@@ -33,3 +34,5 @@ char *GenLink(RequestInfo_t *rI);
 ShapeLinker_t *GenListItemList(RequestInfo_t *rI);
 int GenThemeArray(RequestInfo_t *rI);
 int FillThemeArrayWithImg(RequestInfo_t *rI);
+void SetDefaultsRequestInfo(RequestInfo_t *rI);
+int DownloadThemeFromID(char *id, char *path);

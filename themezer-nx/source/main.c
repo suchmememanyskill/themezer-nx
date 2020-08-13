@@ -23,13 +23,13 @@ int main(int argc, char* argv[])
     curl_global_init(CURL_GLOBAL_ALL);
 
     RequestInfo_t rI = {0, 20, 1, 0, 0, "", 0, 0, NULL, NULL};
+    SetDefaultsRequestInfo(&rI);
     ShapeLinker_t *items = NULL;
 
     int res;
 
     if (!MakeJsonRequest(GenLink(&rI), &rI.response)){
         if (!(res = GenThemeArray(&rI))){
-            Log("ayy");
             if (!FillThemeArrayWithImg(&rI)){
                 items = GenListItemList(&rI);
             }
@@ -45,7 +45,7 @@ int main(int argc, char* argv[])
         Log("Request failed");
     
 
-    ShapeLinker_t *mainMenu = CreateMainMenu(items);
+    ShapeLinker_t *mainMenu = CreateMainMenu(items, &rI);
     MakeMenu(mainMenu, NULL);
     ShapeLinkDispose(&mainMenu);
     
