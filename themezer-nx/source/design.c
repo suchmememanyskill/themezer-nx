@@ -131,16 +131,22 @@ int MakeRequestAsCtx(Context_t *ctx, RequestInfo_t *rI){
 
     CleanupTransferInfo(rI);
 
+    printf("Making JSON request...\n");
     if (!MakeJsonRequest(GenLink(rI), &rI->response)){
+        printf("JSON request got! parsing...\n");
         if (!(res = GenThemeArray(rI))){
+            printf("JSON data parsed!\n");
             items = GenListItemList(rI);
             AddThemeImagesToDownloadQueue(rI);
 
             ShapeLinker_t *all = ctx->all;
             ListGrid_t *gv = ShapeLinkFind(all, ListGridType)->item;
             TextCentered_t *pageText = ShapeLinkFind(all, TextCenteredType)->item;
-            ShapeLinkDispose(&gv->text);
+            if (gv->text)
+                ShapeLinkDispose(&gv->text);
+            
             gv->text = items;
+            SETBIT(gv->options, LIST_DISABLED, !items);
             gv->highlight = 0;
             free(pageText->text.text);
             pageText->text.text = CopyTextArgsUtil("Page %d/%d", rI->page, rI->pageCount);
@@ -148,7 +154,7 @@ int MakeRequestAsCtx(Context_t *ctx, RequestInfo_t *rI){
         }
     }
 
-
+    printf("Res: %d\n", res);
     return res;
 }
 
@@ -180,6 +186,49 @@ int PrevPageButton(Context_t *ctx){
     return 0;
 }
 
+ShapeLinker_t *CreateSideTargetMenu(){
+    ShapeLinker_t *out = NULL;
+
+    SDL_Texture *screenshot = ScreenshotToTexture();
+    ShapeLinkAdd(&out, ImageCreate(screenshot, POS(0, 0, SCREEN_W, SCREEN_H), IMAGE_CLEANUPTEX), ImageType);
+    ShapeLinkAdd(&out, RectangleCreate(POS(0, 0, SCREEN_W, SCREEN_H), COLOR(0,0,0,170), 1), RectangleType);
+
+    ShapeLinkAdd(&out, RectangleCreate(POS(0, 0, 350, 50), COLOR_TOPBAR, 1), RectangleType);
+    ShapeLinkAdd(&out, TextCenteredCreate(POS(0, 0, 350, 50), "Select a target:", COLOR_WHITE, FONT_TEXT[FSize25]), TextCenteredType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(350, 0, 50, 50), COLOR_TOPBAR, COLOR_RED, COLOR_WHITE, COLOR_TOPBARSELECTION, 0, ButtonStyleFlat, NULL, NULL, exitFunc), ButtonType);
+    ShapeLinkAdd(&out, ImageCreate(XIcon, POS(350, 0, 50, 50), 0), ImageType);
+
+    ShapeLinker_t *list = NULL;
+    ShapeLinkAdd(&list, ListItemCreate(COLOR_WHITE, COLOR_WHITE, NULL, "Home Menu", NULL), ListItemType);
+    ShapeLinkAdd(&list, ListItemCreate(COLOR_WHITE, COLOR_WHITE, NULL, "Lock Screen", NULL), ListItemType);
+    ShapeLinkAdd(&list, ListItemCreate(COLOR_WHITE, COLOR_WHITE, NULL, "All Apps", NULL), ListItemType);
+    ShapeLinkAdd(&list, ListItemCreate(COLOR_WHITE, COLOR_WHITE, NULL, "Player Select", NULL), ListItemType);
+
+    ShapeLinkAdd(&out, ListViewCreate(POS(0, 50, 400, SCREEN_H - 50), 75, COLOR_CENTERLISTBG, COLOR_CENTERLISTSELECTION, COLOR_CENTERLISTPRESS, LIST_CENTERLEFT, list, exitFunc, NULL, FONT_TEXT[FSize30]), ListViewType);
+
+    return out;
+}
+
+int SideTargetMenu(Context_t *ctx){
+    ShapeLinker_t *menu = CreateSideTargetMenu();
+    Context_t menuCtx = MakeMenu(menu, ButtonHandlerBExit, NULL);
+
+    if (menuCtx.selected->type == ListViewType && menuCtx.origin == OriginFunction){
+        ListView_t *lv = menuCtx.selected->item;
+        int selection = lv->highlight;
+        RequestInfo_t *rI = ShapeLinkFind(ctx->all, DataType)->item;
+        if (rI->target != selection){
+            SetDefaultsRequestInfo(rI);
+            rI->target = selection;
+            printf("Making request...\n");
+            MakeRequestAsCtx(ctx, rI);
+        }
+    }
+
+    ShapeLinkDispose(&menu);
+    return 0;
+} 
+
 ShapeLinker_t *CreateMainMenu(ShapeLinker_t *listItems, RequestInfo_t *rI) { 
     ShapeLinker_t *out = NULL;
 
@@ -195,7 +244,7 @@ ShapeLinker_t *CreateMainMenu(ShapeLinker_t *listItems, RequestInfo_t *rI) {
 
 
     // MenuButton
-    ShapeLinkAdd(&out, ButtonCreate(POS(0, 0, 120, 60), COLOR_TOPBARBUTTONS, COLOR_BTN1, COLOR_WHITE, COLOR_HIGHLIGHT, 0, ButtonStyleBottomStrip, NULL, NULL, NULL), ButtonType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(0, 0, 120, 60), COLOR_TOPBARBUTTONS, COLOR_BTN1, COLOR_WHITE, COLOR_HIGHLIGHT, 0, ButtonStyleBottomStrip, NULL, NULL, SideTargetMenu), ButtonType);
     ShapeLinkAdd(&out, ImageCreate(menuIcon, POS(30, 0, 60, 60), 0), ImageType);
 
     // SearchButton

@@ -9,7 +9,10 @@
 
 
 const char *requestTargets[] = {
-    "ResidentMenu"
+    "ResidentMenu",
+    "Entrance",
+    "Flaunch",
+    "Psl"
 };
 
 const char *requestSorts[] = {
@@ -220,11 +223,13 @@ int GenThemeArray(RequestInfo_t *rI){
         else
             return -1;
 
-        if (rI->itemCount <= 0)
-            return -2;
 
         FreeThemes(rI);
         rI->curPageItemCount = MIN(rI->limit, rI->itemCount - rI->limit * (rI->page - 1));
+
+        if (rI->itemCount <= 0)
+            return 0;
+
         rI->themes = calloc(sizeof(ThemeInfo_t), rI->curPageItemCount);
 
         cJSON *themesList = cJSON_GetObjectItemCaseSensitive(data, "themeList");
@@ -271,6 +276,7 @@ int GenThemeArray(RequestInfo_t *rI){
             }
 
             res = 0;
+            cJSON_Delete(rI->response);
         }
     }
 
@@ -290,6 +296,9 @@ ShapeLinker_t *GenListItemList(RequestInfo_t *rI){
 }
 
 int AddThemeImagesToDownloadQueue(RequestInfo_t *rI){
+    if (!rI->curPageItemCount)
+        return 0;
+        
     rI->tInfo.transfers = calloc(sizeof(Transfer_t), rI->curPageItemCount);
     rI->tInfo.transferer = curl_multi_init();
     rI->tInfo.finished = false;
