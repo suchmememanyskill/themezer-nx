@@ -50,7 +50,7 @@ int main(int argc, char* argv[])
     
 
     ShapeLinker_t *mainMenu = (items != NULL) ? CreateMainMenu(items, &rI) : errorMenu();
-    MakeMenu(mainMenu, NULL, HandleDownloadQueue);
+    MakeMenu(mainMenu, NULL, (items != NULL) ? HandleDownloadQueue : NULL);
     ShapeLinkDispose(&mainMenu);
     
     ExitDesign();
