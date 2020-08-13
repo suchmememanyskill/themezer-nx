@@ -19,7 +19,7 @@ int ButtonHandlerBExit(Context_t *ctx){
 
     return 0;
 }
-SDL_Texture *menuIcon, *searchIcon, *setIcon, *sortIcon, *arrowLIcon, *arrowRIcon, *LeImg, *XIcon; 
+SDL_Texture *menuIcon, *searchIcon, *setIcon, *sortIcon, *arrowLIcon, *arrowRIcon, *LeImg, *XIcon, *loadingScreen; 
 
 int lennify(Context_t *ctx){
     static int lenny = false;
@@ -38,7 +38,7 @@ int EnlargePreviewImage(Context_t *ctx){
     ShapeLinkAdd(&menu, ButtonCreate(POS(0, 0, SCREEN_W, SCREEN_H), COLOR_WHITE, COLOR_WHITE, COLOR_WHITE, COLOR_WHITE, 0, ButtonStyleFlat, NULL, NULL, exitFunc), ButtonType);
     ShapeLinkAdd(&menu, ImageCreate(target->preview, POS(0, 0, SCREEN_W, SCREEN_H), 0), ImageType);
 
-    MakeMenu(menu, ButtonHandlerBExit);
+    MakeMenu(menu, ButtonHandlerBExit, NULL);
     ShapeLinkDispose(&menu);
 
     return 0;
@@ -115,8 +115,11 @@ int ThemeSelect(Context_t *ctx){
     RequestInfo_t *rI = ShapeLinkFind(all, DataType)->item;
     ThemeInfo_t *target = &rI->themes[gv->highlight];
 
+    if (target->preview == NULL)
+        return 0;
+
     ShapeLinker_t *menu = CreateSelectMenu(target);
-    MakeMenu(menu, ButtonHandlerBExit);
+    MakeMenu(menu, ButtonHandlerBExit, NULL);
     ShapeLinkDispose(&menu);
 
     return 0;
@@ -126,21 +129,25 @@ int MakeRequestAsCtx(Context_t *ctx, RequestInfo_t *rI){
     ShapeLinker_t *items = NULL;
     int res = -1;
 
+    CleanupTransferInfo(rI);
+
     if (!MakeJsonRequest(GenLink(rI), &rI->response)){
         if (!(res = GenThemeArray(rI))){
-            if (!FillThemeArrayWithImg(rI)){
-                items = GenListItemList(rI);
+            items = GenListItemList(rI);
+            AddThemeImagesToDownloadQueue(rI);
 
-                ShapeLinker_t *all = ctx->all;
-                ListGrid_t *gv = ShapeLinkFind(all, ListGridType)->item;
-                TextCentered_t *pageText = ShapeLinkFind(all, TextCenteredType)->item;
-                gv->text = items;
-                gv->highlight = 0;
-                free(pageText->text.text);
-                pageText->text.text = CopyTextArgsUtil("Page %d/%d", rI->page, rI->pageCount);
-            }
+            ShapeLinker_t *all = ctx->all;
+            ListGrid_t *gv = ShapeLinkFind(all, ListGridType)->item;
+            TextCentered_t *pageText = ShapeLinkFind(all, TextCenteredType)->item;
+            ShapeLinkDispose(&gv->text);
+            gv->text = items;
+            gv->highlight = 0;
+            free(pageText->text.text);
+            pageText->text.text = CopyTextArgsUtil("Page %d/%d", rI->page, rI->pageCount);
+            
         }
     }
+
 
     return res;
 }
@@ -231,6 +238,7 @@ void InitDesign(){
     sortIcon = LoadImageSDL("romfs:/sort.png");
     LeImg = LoadImageSDL("romfs:/lenny.png");
     XIcon = LoadImageSDL("romfs:/x.png");
+    loadingScreen = LoadImageSDL("romfs:/loading.png");
 }
 
 void ExitDesign(){
@@ -242,4 +250,5 @@ void ExitDesign(){
     SDL_DestroyTexture(sortIcon);
     SDL_DestroyTexture(LeImg);
     SDL_DestroyTexture(XIcon);
+    SDL_DestroyTexture(loadingScreen);
 }

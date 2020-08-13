@@ -62,9 +62,7 @@
 #define COLOR_INSTBTN COLOR(8, 143, 97, 255)
 #define COLOR_INSTBTNSEL COLOR(10,175,118,255)
 
-//xtern SDL_Texture *folderIcon;
-//xtern SDL_Texture *folderSIcon;
-//xtern SDL_Texture *fileSIcon;
+extern SDL_Texture *loadingScreen;
 
 void InitDesign();
 void ExitDesign();
