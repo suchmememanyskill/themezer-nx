@@ -174,12 +174,14 @@ char *GetThemeDownloadURL(char *id){
 int DownloadThemeFromID(char *id, char *path){
     int res = -1;
     char *url = GetThemeDownloadURL(id);
+    printf("Url gathered: %s", url);
 
     if (url){
         res = MakeDownloadRequest(url, path);
         free(url);
     }
 
+    printf("Res: %d", res);
     return res;
 }
 
@@ -302,7 +304,7 @@ int AddThemeImagesToDownloadQueue(RequestInfo_t *rI){
     rI->tInfo.transfers = calloc(sizeof(Transfer_t), rI->curPageItemCount);
     rI->tInfo.transferer = curl_multi_init();
     rI->tInfo.finished = false;
-    curl_multi_setopt(rI->tInfo.transferer, CURLMOPT_MAXCONNECTS, (long)8);
+    curl_multi_setopt(rI->tInfo.transferer, CURLMOPT_MAXCONNECTS, (long)7);
 
     for (int i = 0; i < rI->curPageItemCount; i++){
             rI->tInfo.transfers[i].transfer = CreateRequest(rI->themes[i].imgLink, &rI->tInfo.transfers[i].data);
@@ -310,7 +312,7 @@ int AddThemeImagesToDownloadQueue(RequestInfo_t *rI){
             curl_easy_setopt(rI->tInfo.transfers[i].transfer, CURLOPT_PRIVATE, &rI->tInfo.transfers[i].index); 
     }
 
-    rI->tInfo.queueOffset = MIN(8, rI->curPageItemCount);
+    rI->tInfo.queueOffset = MIN(7, rI->curPageItemCount);
 
     for (int i = 0; i < rI->tInfo.queueOffset; i++){
         curl_multi_add_handle(rI->tInfo.transferer, rI->tInfo.transfers[i].transfer);
