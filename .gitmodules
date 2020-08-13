@@ -1,0 +1,4 @@
+[submodule "JAGL"]
+	path = JAGL
+	url = https://github.com/suchmememanyskill/JAGL
+	branch = master
