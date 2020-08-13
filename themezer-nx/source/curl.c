@@ -6,11 +6,7 @@
 #include <JAGL.h>
 #include "utils.h"
 
-typedef struct {
-    unsigned char *buffer;
-    size_t len;
-    size_t buflen;
-} get_request_t;
+
 
 const char *requestTargets[] = {
     "ResidentMenu"
@@ -198,7 +194,8 @@ void FreeThemes(RequestInfo_t *rI){
         free(rI->themes[i].description);
         free(rI->themes[i].lastUpdated);
         free(rI->themes[i].imgLink);
-        SDL_DestroyTexture(rI->themes[i].preview);
+        if (rI->themes[i].preview)
+            SDL_DestroyTexture(rI->themes[i].preview);
     }
 
     free(rI->themes);
@@ -313,6 +310,77 @@ int FillThemeArrayWithImgAsync(RequestInfo_t *rI){
     return 0;
 }
 */
+
+int AddThemeImagesToDownloadQueue(RequestInfo_t *rI){
+    rI->tInfo.transfers = calloc(sizeof(Transfer_t), rI->curPageItemCount);
+    rI->tInfo.transferer = curl_multi_init();
+    rI->tInfo.finished = false;
+    curl_multi_setopt(rI->tInfo.transferer, CURLMOPT_MAXCONNECTS, (long)5);
+
+    for (int i = 0; i < rI->curPageItemCount; i++){
+            rI->tInfo.transfers[i].transfer = CreateRequest(rI->themes[i].imgLink, &rI->tInfo.transfers[i].data);
+            rI->tInfo.transfers[i].index = i;
+            curl_easy_setopt(rI->tInfo.transfers[i].transfer, CURLOPT_PRIVATE, &rI->tInfo.transfers[i].index);
+            curl_multi_add_handle(rI->tInfo.transferer, rI->tInfo.transfers[i].transfer);
+    }
+
+    return 0;
+}
+
+int CleanupTransferInfo(RequestInfo_t *rI){
+
+    Log("Cleaning up download...\n");
+
+    for (int i = 0; i < rI->curPageItemCount; i++){
+        curl_multi_remove_handle(rI->tInfo.transferer, rI->tInfo.transfers[i].transfer);
+        curl_easy_cleanup(rI->tInfo.transfers[i].transfer);
+    }
+
+    curl_multi_cleanup(rI->tInfo.transferer);
+    free(rI->tInfo.transfers);
+    rI->tInfo.finished = true;
+    return 0;
+}
+
+int HandleDownloadQueue(Context_t *ctx){
+    ShapeLinker_t *all = ctx->all;
+    RequestInfo_t *rI = ShapeLinkFind(all, DataType)->item;
+    ListGrid_t *gv = ShapeLinkFind(all, ListGridType)->item;
+
+    if (rI->tInfo.finished)
+        return 0;
+
+    int running_handles = 1;
+    curl_multi_perform(rI->tInfo.transferer, &running_handles);
+
+    int msgs_left = -1;
+    struct CURLMsg *msg;
+    while ((msg = curl_multi_info_read(rI->tInfo.transferer, &msgs_left))){
+        if (msg->msg == CURLMSG_DONE){
+            CURL *e = msg->easy_handle;
+            int *index;
+            curl_easy_getinfo(e, CURLINFO_PRIVATE, &index);
+
+            if (msg->data.result != CURLE_OK){
+                Log(CopyTextArgsUtil("Something went fucky with the downloader, index %d, %d\n", *index, msg->data.result));
+            }
+            else {
+                Log(CopyTextArgsUtil("Download of index %d finished!\n", *index));
+                get_request_t *req = &rI->tInfo.transfers[*index].data;
+                rI->themes[*index].preview = LoadImageMemSDL(req->buffer, req->len);
+                free(req->buffer);
+                ListItem_t *li = ShapeLinkOffset(gv->text, *index)->item;
+                li->leftImg = rI->themes[*index].preview;
+            }
+        }
+    }
+
+    if (!running_handles){
+        CleanupTransferInfo(rI);
+    }
+
+    return 0;
+}
 
 int FillThemeArrayWithImg(RequestInfo_t *rI){
     int res = 0;

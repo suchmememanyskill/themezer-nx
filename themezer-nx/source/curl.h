@@ -1,6 +1,13 @@
 #pragma once
 #include <JAGL.h>
 #include "libs/cJSON.h"
+#include <curl/curl.h>
+
+typedef struct {
+    unsigned char *buffer;
+    size_t len;
+    size_t buflen;
+} get_request_t;
 
 typedef struct {
     char *id;
@@ -15,6 +22,18 @@ typedef struct {
 } ThemeInfo_t;
 
 typedef struct {
+    CURL *transfer;
+    get_request_t data;
+    int index;
+} Transfer_t;
+
+typedef struct {
+    Transfer_t *transfers;
+    CURLM *transferer;
+    bool finished;
+} TransferInfo_t;
+
+typedef struct {
     int target;
     int limit;
     int page;
@@ -26,6 +45,7 @@ typedef struct {
     int curPageItemCount;
     cJSON *response;
     ThemeInfo_t *themes;
+    TransferInfo_t tInfo;
 } RequestInfo_t;
 
 int GetThemesList(char *url, char *data, cJSON **response);
@@ -37,3 +57,5 @@ int GenThemeArray(RequestInfo_t *rI);
 int FillThemeArrayWithImg(RequestInfo_t *rI);
 void SetDefaultsRequestInfo(RequestInfo_t *rI);
 int DownloadThemeFromID(char *id, char *path);
+int HandleDownloadQueue(Context_t *ctx);
+int AddThemeImagesToDownloadQueue(RequestInfo_t *rI);

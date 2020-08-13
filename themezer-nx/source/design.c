@@ -115,6 +115,9 @@ int ThemeSelect(Context_t *ctx){
     RequestInfo_t *rI = ShapeLinkFind(all, DataType)->item;
     ThemeInfo_t *target = &rI->themes[gv->highlight];
 
+    if (target->preview == NULL)
+        return 0;
+
     ShapeLinker_t *menu = CreateSelectMenu(target);
     MakeMenu(menu, ButtonHandlerBExit);
     ShapeLinkDispose(&menu);
@@ -214,7 +217,7 @@ ShapeLinker_t *CreateMainMenu(ShapeLinker_t *listItems, RequestInfo_t *rI) {
     ShapeLinkAdd(&out, ButtonCreate(POS(1160, 0, 120, 60), COLOR_TOPBARBUTTONS, COLOR_BTN5, COLOR_WHITE, COLOR_HIGHLIGHT, 0, ButtonStyleBottomStrip, NULL, NULL, NextPageButton), ButtonType);
     ShapeLinkAdd(&out, ImageCreate(arrowRIcon, POS(1190, 0, 60, 60), 0), ImageType);
 
-    ShapeLinkAdd(&out, ListGridCreate(POS(0, 60, SCREEN_W, SCREEN_H - 60), 4, 260, COLOR_CENTERLISTBG, COLOR_CENTERLISTSELECTION, COLOR_CENTERLISTPRESS, (listItems) ? 0 : LIST_DISABLED, listItems, ThemeSelect, NULL, FONT_TEXT[FSize25]), ListGridType);
+    ShapeLinkAdd(&out, ListGridCreate(POS(0, 60, SCREEN_W, SCREEN_H - 60), 4, 260, COLOR_CENTERLISTBG, COLOR_CENTERLISTSELECTION, COLOR_CENTERLISTPRESS, (listItems) ? 0 : LIST_DISABLED, listItems, ThemeSelect, HandleDownloadQueue, FONT_TEXT[FSize25]), ListGridType);
     // 4, 260
         
     ShapeLinkAdd(&out, rI, DataType);
