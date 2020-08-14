@@ -416,7 +416,9 @@ ShapeLinker_t *CreateSideTargetMenu(){
     for (int i = 0; i < 7; i++)
         ShapeLinkAdd(&list, ListItemCreate(COLOR_WHITE, COLOR_WHITE, NULL, targetOptions[i], NULL), ListItemType);
 
-    ShapeLinkAdd(&out, ListViewCreate(POS(0, 50, 400, SCREEN_H - 50), 75, COLOR_CENTERLISTBG, COLOR_CENTERLISTSELECTION, COLOR_CENTERLISTPRESS, LIST_CENTERLEFT, list, exitFunc, NULL, FONT_TEXT[FSize30]), ListViewType);
+    ShapeLinkAdd(&out, ListViewCreate(POS(0, 50, 400, SCREEN_H - 100), 75, COLOR_CENTERLISTBG, COLOR_CENTERLISTSELECTION, COLOR_CENTERLISTPRESS, LIST_CENTERLEFT, list, exitFunc, NULL, FONT_TEXT[FSize30]), ListViewType);
+
+    ShapeLinkAdd(&out, ButtonCreate(POS(0, SCREEN_H - 50, 400, 50), COLOR_CENTERLISTBG, COLOR_RED, COLOR_WHITE, COLOR_CENTERLISTSELECTION, 0, ButtonStyleBottomStrip, "Exit Themezer-NX", FONT_TEXT[FSize25], exitFunc), ButtonType);
 
     return out;
 }
@@ -438,7 +440,7 @@ int ShowSideTargetMenu(Context_t *ctx){
     }
 
     ShapeLinkDispose(&menu);
-    return 0;
+    return (menuCtx.curOffset == 7 && menuCtx.origin == OriginFunction) ? -1 : 0; 
 } 
 
 ShapeLinker_t *CreateMainMenu(ShapeLinker_t *listItems, RequestInfo_t *rI) { 
