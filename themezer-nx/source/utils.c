@@ -42,11 +42,11 @@ char *SanitizeString(const char *name)
 	const char* forbiddenChars = "/?<>\\:*|\".,";
 
 	char *src = calloc(strlen(name), 1);
-	char *c = name;
+	const char *c = name;
 	char *src_temp = src;
 	while (*c)
 	{
-		if (!strchr(forbiddenChars, *c)){
+		if (!strchr(forbiddenChars, *c) && *c >= 32 && *c <= 126){
 			*src_temp = *c;
 			src_temp++;
 		}

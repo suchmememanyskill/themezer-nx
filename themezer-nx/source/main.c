@@ -37,17 +37,7 @@ int main(int argc, char* argv[])
     SetDefaultsRequestInfo(&rI);
     ShapeLinker_t *items = NULL;
 
-
     AllocateInstalls(7);
-    /*
-    SetInstallSlot(0, "/Themes/Migush/Skyrim Landscape.nxtheme");
-    SetInstallSlot(5, "/Themes/transparent.nxtheme");
-    printf(GetInstallArgs("/switch/NXThemesInstaller.nro"));
-    envSetNextLoad("/switch/NXThemesInstaller.nro", GetInstallArgs("/switch/NXThemesInstaller.nro"));
-    */
-
-
-
     int res;
 
     if (!MakeJsonRequest(GenLink(&rI), &rI.response)){
