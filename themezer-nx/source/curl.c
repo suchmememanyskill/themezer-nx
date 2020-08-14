@@ -18,7 +18,8 @@ const char *requestTargets[] = {
 const char *requestSorts[] = {
     "updated",
     "downloads",
-    "likes"
+    "likes",
+    "id"
 };
 
 const char *requestOrders[] = {
@@ -383,7 +384,7 @@ int HandleDownloadQueue(Context_t *ctx){
 
 void SetDefaultsRequestInfo(RequestInfo_t *rI){
     rI->target = 0;
-    rI->limit = 20;
+    rI->limit = 16;
     rI->page = 1;
     rI->sort = 0;
     rI->order = 0;
