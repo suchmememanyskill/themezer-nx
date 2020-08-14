@@ -5,10 +5,12 @@
 
 // Include the main libnx system header, for Switch development
 #include <switch.h>
+#include <unistd.h>
 #include <JAGL.h>
 #include "design.h"
 #include <curl/curl.h>
 #include "libs/cJSON.h"
+#include "utils.h"
 
 #include "curl.h"
 
@@ -35,6 +37,17 @@ int main(int argc, char* argv[])
     SetDefaultsRequestInfo(&rI);
     ShapeLinker_t *items = NULL;
 
+
+    AllocateInstalls(7);
+    /*
+    SetInstallSlot(0, "/Themes/Migush/Skyrim Landscape.nxtheme");
+    SetInstallSlot(5, "/Themes/transparent.nxtheme");
+    printf(GetInstallArgs("/switch/NXThemesInstaller.nro"));
+    envSetNextLoad("/switch/NXThemesInstaller.nro", GetInstallArgs("/switch/NXThemesInstaller.nro"));
+    */
+
+
+
     int res;
 
     if (!MakeJsonRequest(GenLink(&rI), &rI.response)){
@@ -53,6 +66,18 @@ int main(int argc, char* argv[])
     MakeMenu(mainMenu, NULL, (items != NULL) ? HandleDownloadQueue : NULL);
     ShapeLinkDispose(&mainMenu);
     
+    char themeInstallerLocation[] = "/switch/NXThemesInstaller.nro";
+    if (CheckIfInstallsQueued()){
+        if (access(themeInstallerLocation, F_OK) != -1){
+            if (R_SUCCEEDED(envSetNextLoad(themeInstallerLocation, GetInstallArgs(themeInstallerLocation)))){
+                printf("Env set!\n");
+            }
+            else {
+                printf("Env ded!\n");
+            }
+        }
+    }
+
     ExitDesign();
     romfsExit();
     FontExit();

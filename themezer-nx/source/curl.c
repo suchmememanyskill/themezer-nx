@@ -12,7 +12,10 @@ const char *requestTargets[] = {
     "ResidentMenu",
     "Entrance",
     "Flaunch",
-    "Psl"
+    "Psl",
+    "Set",
+    "MyPage",
+    "Notification"
 };
 
 const char *requestSorts[] = {
@@ -136,7 +139,7 @@ int MakeDownloadRequest(char *url, char *path){
             fclose(fp);
         }
         else {
-            res = -1;
+            res = 1;
         }
     }
 
@@ -173,7 +176,7 @@ char *GetThemeDownloadURL(char *id){
 }
 
 int DownloadThemeFromID(char *id, char *path){
-    int res = -1;
+    int res = 1;
     char *url = GetThemeDownloadURL(id);
     printf("Url gathered: %s", url);
 
@@ -357,10 +360,10 @@ int HandleDownloadQueue(Context_t *ctx){
             curl_easy_getinfo(e, CURLINFO_PRIVATE, &index);
 
             if (msg->data.result != CURLE_OK){
-                //Log(CopyTextArgsUtil("Something went fucky with the downloader, index %d, %d\n", *index, msg->data.result));
+                printf("Something went fucky with the downloader, index %d, %d\n", *index, msg->data.result);
             }
             else {
-                //Log(CopyTextArgsUtil("Download of index %d finished!\n", *index));
+                printf("Download of index %d finished!\n", *index);
                 get_request_t *req = &rI->tInfo.transfers[*index].data;
                 rI->themes[*index].preview = LoadImageMemSDL(req->buffer, req->len);
                 free(req->buffer);
@@ -376,6 +379,7 @@ int HandleDownloadQueue(Context_t *ctx){
     }
 
     if (!running_handles){
+        printf("Downloading done!\n");
         CleanupTransferInfo(rI);
     }
 

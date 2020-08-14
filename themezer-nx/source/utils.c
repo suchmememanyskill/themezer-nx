@@ -39,16 +39,105 @@ int isStringNullOrEmpty(const char *in){
 
 char *SanitizeString(const char *name)
 {
-	const char* forbiddenChars = "/?<>\\:*|\".";
+	const char* forbiddenChars = "/?<>\\:*|\".,";
 
-	char *src = CopyTextUtil(name);
-	char *c = src;
+	char *src = calloc(strlen(name), 1);
+	char *c = name;
+	char *src_temp = src;
 	while (*c)
 	{
-		if (strchr(forbiddenChars, *c))
-			*c = '_';
+		if (!strchr(forbiddenChars, *c)){
+			*src_temp = *c;
+			src_temp++;
+		}
+			
 		c++;
 	}
 
+	if (!src[0]){
+		src[0] = '_';
+	}
+
 	return src;
+}
+
+ThemeInstallerArgs_t QueuedInstalls;
+
+void AllocateInstalls(int len){
+	QueuedInstalls.len = len;
+	QueuedInstalls.paths = calloc(sizeof(char*), len);
+}
+
+int CheckIfInstallSlotIsFree(int pos){
+	return (QueuedInstalls.paths[pos] == NULL);
+}
+
+void SetInstallSlot(int pos, char *path){
+	int len = 0;
+
+	char *c = path;
+	while(*c){
+		len++;
+		if (*c == ' ')
+			len += 2;
+		c++;
+	}
+
+	char *out = calloc(1, len);
+	char *temp = out;
+	c = path;
+
+	while(*c){
+		if (*c == ' '){
+			*temp = '(';
+			temp++;
+			*temp = '_';
+			temp++;
+			*temp = ')';
+		}
+		else {
+			*temp = *c; 
+		}
+
+		temp++;
+		c++;
+	}
+
+	QueuedInstalls.paths[pos] = out;
+}
+
+char *GetInstallArgs(char *path){
+	int len = 15, pathAmount = 0, temp = 0;
+	len += strlen(path);
+
+	for (int i = 0; i < QueuedInstalls.len; i++){
+		if (QueuedInstalls.paths[i] != NULL){
+			len += strlen(QueuedInstalls.paths[i]) + 1;
+			pathAmount++;
+		}
+	}
+
+	char *out = calloc(1, len);
+	strcpy(out, path);
+	strcat(out, " installtheme=");
+	for (int i = 0; i < QueuedInstalls.len; i++){
+		if (QueuedInstalls.paths[i] != NULL){
+			strcat(out, QueuedInstalls.paths[i]);
+			temp++;
+			if (pathAmount > temp)
+				strcat(out, ",");
+		}
+	}
+
+	return out;
+}
+
+int CheckIfInstallsQueued(){
+	for (int i = 0; i < QueuedInstalls.len; i++){
+		if (QueuedInstalls.paths[i] != NULL){
+			return 1;
+		}
+	}
+
+	return 0;
 }

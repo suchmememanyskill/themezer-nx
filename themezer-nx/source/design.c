@@ -53,10 +53,10 @@ int DownloadThemeButton(Context_t *ctx){
     SDL_Texture *screenshot = ScreenshotToTexture();
     ShapeLinkAdd(&render, ImageCreate(screenshot, POS(0, 0, SCREEN_W, SCREEN_H), IMAGE_CLEANUPTEX), ImageType);
     ShapeLinkAdd(&render, RectangleCreate(POS(0, 0, SCREEN_W, SCREEN_H), COLOR(0,0,0,200), 1), RectangleType);
-    ShapeLinkAdd(&render, TextCenteredCreate(POS(0, 0, SCREEN_W, SCREEN_H), "Downloading Theme...", COLOR_WHITE, FONT_TEXT[FSize45]), TextCenteredType);
+    TextCentered_t *text = TextCenteredCreate(POS(0, 0, SCREEN_W, SCREEN_H), "Downloading Theme...", COLOR_WHITE, FONT_TEXT[FSize45]);
+    ShapeLinkAdd(&render, text, TextCenteredType);
 
     RenderShapeLinkList(render);
-    ShapeLinkDispose(&render);
 
     mkdir("/Themes/", 0777);
 
@@ -65,15 +65,53 @@ int DownloadThemeButton(Context_t *ctx){
 
     char *path = CopyTextArgsUtil("%s/%s.nxtheme", creatorPath, target->name);
 
-    DownloadThemeFromID(target->id, path);
+    int res = DownloadThemeFromID(target->id, path);
+
+    if (res){
+        ShapeLinkAdd(&render, ButtonCreate(POS(0, 0, SCREEN_W, SCREEN_H), COLOR(0, 0, 0, 0), COLOR(0, 0, 0, 0), COLOR(0, 0, 0, 0), COLOR(0, 0, 0, 0), 0, ButtonStyleFlat, NULL, NULL, exitFunc), ButtonType);
+        free(text->text.text);
+        text->text.text = CopyTextUtil("Download failed! Press A to return");
+        MakeMenu(render, ButtonHandlerBExit, NULL);
+    }
+
+    ShapeLinkDispose(&render);
 
     free(path);
     free(creatorPath);
 
+    return res;
+}
+
+int InstallThemeButton(Context_t *ctx){
+    ShapeLinker_t *out = NULL;
+
+    SDL_Texture *screenshot = ScreenshotToTexture();
+    ShapeLinkAdd(&out, ImageCreate(screenshot, POS(0, 0, SCREEN_W, SCREEN_H), IMAGE_CLEANUPTEX), ImageType);
+    ShapeLinkAdd(&out, RectangleCreate(POS(0, 0, SCREEN_W, SCREEN_H), COLOR(0,0,0,170), 1), RectangleType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(200, 300, SCREEN_W - 400, SCREEN_H - 600), COLOR_CENTERLISTBG, COLOR_CENTERLISTPRESS, COLOR_WHITE, COLOR_CENTERLISTBG, 0, ButtonStyleFlat, NULL, NULL, exitFunc), ButtonType);
+    ShapeLinkAdd(&out, TextCenteredCreate(POS(200, 350, SCREEN_W - 400, SCREEN_H - 650), "Install Queued. Exit the app to apply the theme. Press A to return", COLOR_WHITE, FONT_TEXT[FSize28]), TextCenteredType);
+    ShapeLinkAdd(&out, RectangleCreate(POS(200, 300, SCREEN_W - 400, 50), COLOR_TOPBAR, 1), RectangleType);
+    ShapeLinkAdd(&out, ImageCreate(XIcon, POS(SCREEN_W - 250, 300, 50, 50), 0), ImageType);
+
+
+    int res = DownloadThemeButton(ctx);
+    if (!res){
+        ShapeLinker_t *targetLink = ShapeLinkFind(ctx->all, DataType);
+        ThemeInfo_t *target = targetLink->item;
+        RequestInfo_t *rI = targetLink->next->item;
+        char *path = CopyTextArgsUtil("/Themes/%s/%s.nxtheme", target->creator, target->name);
+
+        SetInstallSlot(rI->target, path);
+
+        MakeMenu(out, ButtonHandlerBExit, NULL);
+    }
+
+    ShapeLinkDispose(&out);
+
     return 0;
 }
 
-ShapeLinker_t *CreateSelectMenu(ThemeInfo_t *target){
+ShapeLinker_t *CreateSelectMenu(ThemeInfo_t *target, RequestInfo_t *rI){
     ShapeLinker_t *out = NULL;
 
     SDL_Texture *screenshot = ScreenshotToTexture();
@@ -91,7 +129,7 @@ ShapeLinker_t *CreateSelectMenu(ThemeInfo_t *target){
     ShapeLinkAdd(&out, ButtonCreate(POS(50, 100, 860, 488), COLOR_CENTERLISTBG, COLOR_WHITE, COLOR_WHITE, COLOR_CENTERLISTSELECTION, 0, ButtonStyleFlat, NULL, NULL, EnlargePreviewImage), ButtonType);
     ShapeLinkAdd(&out, ImageCreate(target->preview, POS(55, 105, 850, 478), 0), ImageType);
 
-    ShapeLinkAdd(&out, ButtonCreate(POS(915, 110, SCREEN_W - 980, 60), COLOR_INSTBTN, COLOR_GREEN, COLOR_WHITE, COLOR_INSTBTNSEL, 0, ButtonStyleFlat, "Install Theme", FONT_TEXT[FSize33], NULL), ButtonType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(915, 110, SCREEN_W - 980, 60), COLOR_INSTBTN, COLOR_GREEN, COLOR_WHITE, COLOR_INSTBTNSEL, 0, ButtonStyleFlat, "Install Theme", FONT_TEXT[FSize33], InstallThemeButton), ButtonType);
     ShapeLinkAdd(&out, ButtonCreate(POS(915, 180, SCREEN_W - 980, 60), COLOR_DLBTN, COLOR_GREEN, COLOR_WHITE, COLOR_DLBTNSEL, 0, ButtonStyleFlat, "Download Theme", FONT_TEXT[FSize33], DownloadThemeButton), ButtonType);
 
     char *info = CopyTextArgsUtil("Creator: %s\n\nLast Updated: %s\n\nDownload Count: %d\nLike Count: %d\nID: t%s", target->creator, target->lastUpdated, target->dlCount, target->likeCount, target->id);
@@ -105,6 +143,7 @@ ShapeLinker_t *CreateSelectMenu(ThemeInfo_t *target){
     //ShapeLinkAdd()
 
     ShapeLinkAdd(&out, target, DataType);
+    ShapeLinkAdd(&out, rI, DataType);
 
     return out;
 }
@@ -118,7 +157,7 @@ int ThemeSelect(Context_t *ctx){
     if (target->preview == NULL)
         return 0;
 
-    ShapeLinker_t *menu = CreateSelectMenu(target);
+    ShapeLinker_t *menu = CreateSelectMenu(target, rI);
     MakeMenu(menu, ButtonHandlerBExit, NULL);
     ShapeLinkDispose(&menu);
 
@@ -351,6 +390,16 @@ int ShowSideFilterMenu(Context_t *ctx){
     return 0;
 }
 
+const char *targetOptions[] = {
+    "Home Menu",
+    "Lock Screen",
+    "All Apps",
+    "Player Select",
+    "Settings",
+    "User Page",
+    "News"
+};
+
 ShapeLinker_t *CreateSideTargetMenu(){
     ShapeLinker_t *out = NULL;
 
@@ -364,10 +413,8 @@ ShapeLinker_t *CreateSideTargetMenu(){
     ShapeLinkAdd(&out, ButtonCreate(POS(400, 0, SCREEN_W - 400, SCREEN_H), COLOR(0,0,0,170), COLOR(0,0,0,170), COLOR(0,0,0,170), COLOR(0,0,0,170), BUTTON_NOJOYSEL, ButtonStyleFlat, NULL, NULL, exitFunc), ButtonType);
 
     ShapeLinker_t *list = NULL;
-    ShapeLinkAdd(&list, ListItemCreate(COLOR_WHITE, COLOR_WHITE, NULL, "Home Menu", NULL), ListItemType);
-    ShapeLinkAdd(&list, ListItemCreate(COLOR_WHITE, COLOR_WHITE, NULL, "Lock Screen", NULL), ListItemType);
-    ShapeLinkAdd(&list, ListItemCreate(COLOR_WHITE, COLOR_WHITE, NULL, "All Apps", NULL), ListItemType);
-    ShapeLinkAdd(&list, ListItemCreate(COLOR_WHITE, COLOR_WHITE, NULL, "Player Select", NULL), ListItemType);
+    for (int i = 0; i < 7; i++)
+        ShapeLinkAdd(&list, ListItemCreate(COLOR_WHITE, COLOR_WHITE, NULL, targetOptions[i], NULL), ListItemType);
 
     ShapeLinkAdd(&out, ListViewCreate(POS(0, 50, 400, SCREEN_H - 50), 75, COLOR_CENTERLISTBG, COLOR_CENTERLISTSELECTION, COLOR_CENTERLISTPRESS, LIST_CENTERLEFT, list, exitFunc, NULL, FONT_TEXT[FSize30]), ListViewType);
 
