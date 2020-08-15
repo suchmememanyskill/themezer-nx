@@ -41,7 +41,8 @@ char *GenLink(RequestInfo_t *rI){
     }
     
     static char request[0x400];
-    sprintf(request, "https://api.themezer.ga/?query=query{themeList(target:\"%s\",page:%d,limit:%d,sort:\"%s\",order:\"%s\",query:%s){id,creator{display_name},details{name,description},categories,last_updated,dl_count,like_count,preview{original}}}", requestTargets[rI->target], rI->page, rI->limit, requestSorts[rI->sort], requestOrders[rI->order], searchQuoted);
+    sprintf(request, "https://api.themezer.ga/?query=query($target:String,$page:Int,$limit:Int,$sort:String,$order:String,$query:String){themeList(target:$target,page:$page,limit:$limit,sort:$sort,order:$order,query:$query){id,creator{display_name},details{name,description},categories,last_updated,dl_count,like_count,preview{original}}}&variables={\"target\":\"%s\",\"page\":%d,\"limit\":%d,\"sort\":\"%s\",\"order\":\"%s\",\"query\":%s}",\
+    requestTargets[rI->target], rI->page, rI->limit, requestSorts[rI->sort], requestOrders[rI->order], searchQuoted);
     
     free(searchQuoted);
 
@@ -104,7 +105,8 @@ int MakeJsonRequest(char *url, cJSON **response){
             *response = cJSON_Parse(req.buffer);
         }
 
-        //Log(req.buffer);
+        Log(req.buffer);
+        printf(req.buffer);
         free(req.buffer);
     }
 

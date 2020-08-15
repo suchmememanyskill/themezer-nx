@@ -24,7 +24,7 @@ SDL_Texture *menuIcon, *searchIcon, *setIcon, *sortIcon, *arrowLIcon, *arrowRIco
 int lennify(Context_t *ctx){
     static int lenny = false;
     if (!lenny){
-        ShapeLinkAdd(&ctx->all, ImageCreate(LeImg, POS(555, 0, 170, 60), 0), ImageType);
+        ShapeLinkAdd(&ctx->all, ImageCreate(LeImg, POS(525, 0, 170, 60), 0), ImageType);
         lenny = true;
     }
     return 0;
@@ -207,7 +207,9 @@ int NextPageButton(Context_t *ctx){
 
     rI->page++;
 
-    MakeRequestAsCtx(ctx,rI);
+    if (MakeRequestAsCtx(ctx,rI))
+        rI->page--;
+
     return 0;
 }
 
@@ -221,7 +223,9 @@ int PrevPageButton(Context_t *ctx){
 
     rI->page--;
 
-    MakeRequestAsCtx(ctx,rI);
+    if (MakeRequestAsCtx(ctx,rI))
+        rI->page++;
+
     return 0;
 }
 
@@ -305,9 +309,9 @@ int SideMenuSetSearch(Context_t *ctx){
         if (options->search != NULL)
             free(options->search);
 
-        options->search = CopyTextUtil(out);
+        options->search = SanitizeString(out);
         free(text->text.text);
-        text->text.text = CopyTextArgsUtil("Search: %s", out);
+        text->text.text = CopyTextArgsUtil("Search: %s", options->search);
     }
 
     free(out);
