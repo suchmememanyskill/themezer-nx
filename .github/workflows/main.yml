@@ -1,0 +1,21 @@
+name: Build Themezer-nx
+
+on: [push]
+jobs:
+  ThemezerNX:
+    runs-on: ubuntu-latest
+    container: devkitpro/devkita64_devkitarm
+    steps:
+    - uses: actions/checkout@v1
+    - name: Update repo.
+      run: |
+        git submodule update --init --recursive
+        
+    - name: Building ThemezerNX
+      run: |
+        make -j$(nproc)
+        
+    - uses: actions/upload-artifact@master
+      with:
+        name: Themezer-NX
+        path: themezer-nx/themezer-nx.nro
