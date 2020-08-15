@@ -36,7 +36,7 @@ void SetInstallButtonState(int state){
     InstallButtonState = state;
 }
 
-SDL_Texture *menuIcon, *searchIcon, *setIcon, *sortIcon, *arrowLIcon, *arrowRIcon, *LeImg, *XIcon, *loadingScreen; 
+SDL_Texture *menuIcon, *searchIcon, *setIcon, *arrowLIcon, *arrowRIcon, *LeImg, *XIcon, *loadingScreen; 
 
 int lennify(Context_t *ctx){
     static int lenny = false;
@@ -573,7 +573,6 @@ void InitDesign(){
     setIcon = LoadImageSDL("romfs:/set.png");
     arrowLIcon = LoadImageSDL("romfs:/arrowL.png");
     arrowRIcon = LoadImageSDL("romfs:/arrowR.png");
-    sortIcon = LoadImageSDL("romfs:/sort.png");
     LeImg = LoadImageSDL("romfs:/lenny.png");
     XIcon = LoadImageSDL("romfs:/x.png");
     loadingScreen = LoadImageSDL("romfs:/loading.png");
@@ -585,7 +584,6 @@ void ExitDesign(){
     SDL_DestroyTexture(setIcon);
     SDL_DestroyTexture(arrowLIcon);
     SDL_DestroyTexture(arrowRIcon);
-    SDL_DestroyTexture(sortIcon);
     SDL_DestroyTexture(LeImg);
     SDL_DestroyTexture(XIcon);
     SDL_DestroyTexture(loadingScreen);

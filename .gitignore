@@ -360,3 +360,5 @@ themezer-nx/build/
 *.exe
 
 *.bat
+
+themezer-nx/assets/
