@@ -69,7 +69,7 @@ char *SanitizeString(const char *name)
 {
 	const char* forbiddenChars = "/?<>\\:*|\".,";
 
-	char *src = calloc(strlen(name), 1);
+	char *src = calloc(strlen(name) + 1, 1);
 	const char *c = name;
 	char *src_temp = src;
 	while (*c)
