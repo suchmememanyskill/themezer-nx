@@ -30,6 +30,24 @@ const char *targetOptions[] = {
     "News"
 };
 
+typedef struct {
+    int sort;
+    int order;
+    char *search;
+} FilterOptions_t;
+
+const char *sortOptions[] = {
+    "Last updated",
+    "Downloads",
+    "Likes",
+    "Creation date"
+};
+
+const char *orderOptions[] = {
+    "Descending",
+    "Ascending"
+};
+
 int InstallButtonState = 0;
 
 void SetInstallButtonState(int state){
@@ -157,7 +175,7 @@ ShapeLinker_t *CreateSelectMenu(ThemeInfo_t *target, RequestInfo_t *rI){
     ShapeLinkAdd(&out, RectangleCreate(POS(50, 100, SCREEN_W - 100, SCREEN_H - 150), COLOR_CENTERLISTBG, 1), RectangleType);
     ShapeLinkAdd(&out, RectangleCreate(POS(50, 50, SCREEN_W - 150, 50), COLOR_TOPBAR, 1), RectangleType);
 
-    ShapeLinkAdd(&out, TextCenteredCreate(POS(55, 50, 0 /* 0 width left alligns it */, 50), target->name, COLOR_WHITE, FONT_TEXT[FSize33]), TextCenteredType);
+    ShapeLinkAdd(&out, TextCenteredCreate(POS(55, 50, 0 /* 0 width left alligns it */, 50), target->name, COLOR_WHITE, FONT_TEXT[FSize30]), TextCenteredType);
 
     ShapeLinkAdd(&out, ButtonCreate(POS(SCREEN_W - 100, 50, 50, 50), COLOR_TOPBAR, COLOR_RED, COLOR_WHITE, COLOR_TOPBARSELECTION, 0, ButtonStyleFlat, NULL, NULL, exitFunc), ButtonType);
     ShapeLinkAdd(&out, ImageCreate(XIcon, POS(SCREEN_W - 100, 50, 50, 50), 0), ImageType);
@@ -165,14 +183,14 @@ ShapeLinker_t *CreateSelectMenu(ThemeInfo_t *target, RequestInfo_t *rI){
     ShapeLinkAdd(&out, ButtonCreate(POS(50, 100, 860, 488), COLOR_CENTERLISTBG, COLOR_WHITE, COLOR_WHITE, COLOR_CENTERLISTSELECTION, 0, ButtonStyleFlat, NULL, NULL, EnlargePreviewImage), ButtonType);
     ShapeLinkAdd(&out, ImageCreate(target->preview, POS(55, 105, 850, 478), 0), ImageType);
 
-    ShapeLinkAdd(&out, ButtonCreate(POS(915, 110, SCREEN_W - 980, 60), COLOR_INSTBTN, COLOR_GREEN, COLOR_WHITE, COLOR_INSTBTNSEL, (InstallButtonState) ? 0 : BUTTON_DISABLED, ButtonStyleFlat, "Install Theme", FONT_TEXT[FSize33], InstallThemeButton), ButtonType);
-    ShapeLinkAdd(&out, ButtonCreate(POS(915, 180, SCREEN_W - 980, 60), COLOR_DLBTN, COLOR_GREEN, COLOR_WHITE, COLOR_DLBTNSEL, 0, ButtonStyleFlat, "Download Theme", FONT_TEXT[FSize33], DownloadThemeButton), ButtonType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(915, 110, SCREEN_W - 980, 60), COLOR_INSTBTN, COLOR_GREEN, COLOR_WHITE, COLOR_INSTBTNSEL, (InstallButtonState) ? 0 : BUTTON_DISABLED, ButtonStyleFlat, "Install Theme", FONT_TEXT[FSize30], InstallThemeButton), ButtonType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(915, 180, SCREEN_W - 980, 60), COLOR_DLBTN, COLOR_GREEN, COLOR_WHITE, COLOR_DLBTNSEL, 0, ButtonStyleFlat, "Download Theme", FONT_TEXT[FSize30], DownloadThemeButton), ButtonType);
 
     char *info = CopyTextArgsUtil("Creator: %s\n\nLast Updated: %s\n\nDownload Count: %d\nLike Count: %d\nID: t%s", target->creator, target->lastUpdated, target->dlCount, target->likeCount, target->id);
     char *desc = CopyTextArgsUtil("Description: %s", target->description);
 
-    ShapeLinkAdd(&out, TextCenteredCreate(POS(920, 250, SCREEN_W - 990, 420), info, COLOR_WHITE, FONT_TEXT[FSize25]), TextBoxType);
-    ShapeLinkAdd(&out, TextCenteredCreate(POS(60, 593, SCREEN_W - 120, 80), desc, COLOR_WHITE, FONT_TEXT[FSize25]), TextBoxType);
+    ShapeLinkAdd(&out, TextCenteredCreate(POS(920, 250, SCREEN_W - 990, 420), info, COLOR_WHITE, FONT_TEXT[FSize23]), TextBoxType);
+    ShapeLinkAdd(&out, TextCenteredCreate(POS(60, 593, SCREEN_W - 120, 80), desc, COLOR_WHITE, FONT_TEXT[FSize23]), TextBoxType);
 
     free(info);
     free(desc);
@@ -265,24 +283,6 @@ int PrevPageButton(Context_t *ctx){
     return 0;
 }
 
-typedef struct {
-    int sort;
-    int order;
-    char *search;
-} FilterOptions_t;
-
-const char *sortOptions[] = {
-    "Last updated",
-    "Downloads",
-    "Likes",
-    "Creation date"
-};
-
-const char *orderOptions[] = {
-    "Descending",
-    "Ascending"
-};
-
 int SideMenuSortSelection(Context_t *ctx){
     ShapeLinker_t *all = ctx->all;
     ListView_t *lv = ShapeLinkOffset(all, 14)->item;
@@ -361,7 +361,7 @@ ShapeLinker_t *CreateSideFilterMenu(FilterOptions_t *options){
 
     char *search = CopyTextArgsUtil("Search: %s", (options->search[0]) ? options->search : "None");
     ShapeLinkAdd(&out, RectangleCreate(POS(0, 60, 400, 50), COLOR_BTN2, 1), RectangleType);
-    ShapeLinkAdd(&out, TextCenteredCreate(POS(0, 60, 400, 50), search, COLOR_WHITE, FONT_TEXT[FSize28]), TextCenteredType);
+    ShapeLinkAdd(&out, TextCenteredCreate(POS(0, 60, 400, 50), search, COLOR_WHITE, FONT_TEXT[FSize23]), TextCenteredType);
     ShapeLinkAdd(&out, ButtonCreate(POS(200, 110, 200, 50), COLOR_CENTERLISTBG, COLOR_CENTERLISTPRESS, COLOR_WHITE, COLOR_CENTERLISTSELECTION, 0, ButtonStyleFlat, "Clear Search", FONT_TEXT[FSize28], SideMenuClearSearch), ButtonType);
     ShapeLinkAdd(&out, ButtonCreate(POS(0, 110, 200, 50), COLOR_CENTERLISTBG, COLOR_CENTERLISTPRESS, COLOR_WHITE, COLOR_CENTERLISTSELECTION, 0, ButtonStyleFlat, "Set Search", FONT_TEXT[FSize28], SideMenuSetSearch), ButtonType);
     free(search);
@@ -369,7 +369,7 @@ ShapeLinker_t *CreateSideFilterMenu(FilterOptions_t *options){
     ShapeLinkAdd(&out, RectangleCreate(POS(0, 200, 400, 50), COLOR_BTN2, 1), RectangleType);
 
     char *sort = CopyTextArgsUtil("Sort selection: %s", sortOptions[options->sort]);
-    ShapeLinkAdd(&out, TextCenteredCreate(POS(0, 200, 400, 50), sort, COLOR_WHITE, FONT_TEXT[FSize28]), TextCenteredType);
+    ShapeLinkAdd(&out, TextCenteredCreate(POS(0, 200, 400, 50), sort, COLOR_WHITE, FONT_TEXT[FSize23]), TextCenteredType);
     free(sort);
 
     ShapeLinker_t *sortList = NULL;
@@ -382,7 +382,7 @@ ShapeLinker_t *CreateSideFilterMenu(FilterOptions_t *options){
     ShapeLinkAdd(&out, RectangleCreate(POS(0, 490, 400, 50), COLOR_BTN2, 1), RectangleType);
 
     char *order = CopyTextArgsUtil("Order selection: %s", orderOptions[options->order]);
-    ShapeLinkAdd(&out, TextCenteredCreate(POS(0, 490, 400, 50), order, COLOR_WHITE, FONT_TEXT[FSize28]), TextCenteredType);
+    ShapeLinkAdd(&out, TextCenteredCreate(POS(0, 490, 400, 50), order, COLOR_WHITE, FONT_TEXT[FSize23]), TextCenteredType);
     free(order);
 
     ShapeLinker_t *orderList = NULL;
@@ -559,7 +559,7 @@ ShapeLinker_t *CreateMainMenu(ShapeLinker_t *listItems, RequestInfo_t *rI) {
     ShapeLinkAdd(&out, ButtonCreate(POS(1160, 0, 120, 60), COLOR_TOPBARBUTTONS, COLOR_BTN5, COLOR_WHITE, COLOR_HIGHLIGHT, 0, ButtonStyleBottomStrip, NULL, NULL, NextPageButton), ButtonType);
     ShapeLinkAdd(&out, ImageCreate(arrowRIcon, POS(1190, 0, 60, 60), 0), ImageType);
 
-    ShapeLinkAdd(&out, ListGridCreate(POS(0, 60, SCREEN_W, SCREEN_H - 60), 4, 260, COLOR_CENTERLISTBG, COLOR_CENTERLISTSELECTION, COLOR_CENTERLISTPRESS, (listItems) ? 0 : LIST_DISABLED, listItems, ThemeSelect, NULL, FONT_TEXT[FSize25]), ListGridType);
+    ShapeLinkAdd(&out, ListGridCreate(POS(0, 60, SCREEN_W, SCREEN_H - 60), 4, 260, COLOR_CENTERLISTBG, COLOR_CENTERLISTSELECTION, COLOR_CENTERLISTPRESS, (listItems) ? 0 : LIST_DISABLED, listItems, ThemeSelect, NULL, FONT_TEXT[FSize23]), ListGridType);
     // 4, 260
         
     ShapeLinkAdd(&out, rI, DataType);
