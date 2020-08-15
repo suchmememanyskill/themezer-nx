@@ -69,10 +69,10 @@ int main(int argc, char* argv[])
             AddThemeImagesToDownloadQueue(&rI);
         }
         else
-            Log(CopyTextArgsUtil("Theme array gen failed, %d", res));
+            printf(CopyTextArgsUtil("Theme array gen failed, %d", res));
     }
     else 
-        Log("Request failed");
+        printf("Request failed");
     
 
     ShapeLinker_t *mainMenu = (items != NULL) ? CreateMainMenu(items, &rI) : errorMenu();

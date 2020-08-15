@@ -105,7 +105,6 @@ int MakeJsonRequest(char *url, cJSON **response){
             *response = cJSON_Parse(req.buffer);
         }
 
-        Log(req.buffer);
         printf(req.buffer);
         free(req.buffer);
     }
