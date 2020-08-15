@@ -503,7 +503,7 @@ ShapeLinker_t *CreateSideQueueMenu(){
         free(t);
     }
 
-    ShapeLinkAdd(&out, ListViewCreate(POS(0, 50, 400, SCREEN_H - 100), 75, COLOR_CENTERLISTBG, COLOR_CENTERLISTSELECTION, COLOR_CENTERLISTPRESS, 0, text, HandleQueueList, NULL, FONT_TEXT[FSize28]), ListViewType);
+    ShapeLinkAdd(&out, ListViewCreate(POS(0, 50, 400, SCREEN_H - 100), 75, COLOR_CENTERLISTBG, COLOR_CENTERLISTSELECTION, COLOR_CENTERLISTPRESS, LIST_CENTERLEFT, text, HandleQueueList, NULL, FONT_TEXT[FSize28]), ListViewType);
 
     return out;
 }
