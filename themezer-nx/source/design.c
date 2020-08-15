@@ -183,8 +183,8 @@ ShapeLinker_t *CreateSelectMenu(ThemeInfo_t *target, RequestInfo_t *rI){
     ShapeLinkAdd(&out, ButtonCreate(POS(50, 100, 860, 488), COLOR_CENTERLISTBG, COLOR_WHITE, COLOR_WHITE, COLOR_CENTERLISTSELECTION, 0, ButtonStyleFlat, NULL, NULL, EnlargePreviewImage), ButtonType);
     ShapeLinkAdd(&out, ImageCreate(target->preview, POS(55, 105, 850, 478), 0), ImageType);
 
-    ShapeLinkAdd(&out, ButtonCreate(POS(915, 110, SCREEN_W - 980, 60), COLOR_INSTBTN, COLOR_GREEN, COLOR_WHITE, COLOR_INSTBTNSEL, (InstallButtonState) ? 0 : BUTTON_DISABLED, ButtonStyleFlat, "Install Theme", FONT_TEXT[FSize30], InstallThemeButton), ButtonType);
-    ShapeLinkAdd(&out, ButtonCreate(POS(915, 180, SCREEN_W - 980, 60), COLOR_DLBTN, COLOR_GREEN, COLOR_WHITE, COLOR_DLBTNSEL, 0, ButtonStyleFlat, "Download Theme", FONT_TEXT[FSize30], DownloadThemeButton), ButtonType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(915, 110, SCREEN_W - 980, 60), COLOR_INSTBTN, COLOR_INSTBTNPRS, COLOR_WHITE, COLOR_INSTBTNSEL, (InstallButtonState) ? 0 : BUTTON_DISABLED, ButtonStyleFlat, "Install Theme", FONT_TEXT[FSize30], InstallThemeButton), ButtonType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(915, 180, SCREEN_W - 980, 60), COLOR_DLBTN, COLOR_DLBTNPRS, COLOR_WHITE, COLOR_DLBTNSEL, 0, ButtonStyleFlat, "Download Theme", FONT_TEXT[FSize30], DownloadThemeButton), ButtonType);
 
     char *info = CopyTextArgsUtil("Creator: %s\n\nLast Updated: %s\n\nDownload Count: %d\nLike Count: %d\nID: t%s", target->creator, target->lastUpdated, target->dlCount, target->likeCount, target->id);
     char *desc = CopyTextArgsUtil("Description: %s", target->description);
