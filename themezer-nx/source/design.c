@@ -30,6 +30,36 @@ int lennify(Context_t *ctx){
     return 0;
 }
 
+ShapeLinker_t *CreateSideBaseMenu(char *menuName){ // Count: 7
+    ShapeLinker_t *out = NULL;
+
+    SDL_Texture *screenshot = ScreenshotToTexture();
+    ShapeLinkAdd(&out, ImageCreate(screenshot, POS(0, 0, SCREEN_W, SCREEN_H), IMAGE_CLEANUPTEX), ImageType);
+    ShapeLinkAdd(&out, RectangleCreate(POS(0, 50, 400, SCREEN_H - 50), COLOR_CENTERLISTBG, 1), RectangleType);
+
+    ShapeLinkAdd(&out, RectangleCreate(POS(0, 0, 350, 50), COLOR_TOPBAR, 1), RectangleType);
+    ShapeLinkAdd(&out, TextCenteredCreate(POS(0, 0, 400, 50), menuName, COLOR_WHITE, FONT_TEXT[FSize23]), TextCenteredType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(350, 0, 50, 50), COLOR_TOPBAR, COLOR_RED, COLOR_WHITE, COLOR_TOPBARSELECTION, 0, ButtonStyleFlat, NULL, NULL, exitFunc), ButtonType);
+    ShapeLinkAdd(&out, ImageCreate(XIcon, POS(350, 0, 50, 50), 0), ImageType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(400, 0, SCREEN_W - 400, SCREEN_H), COLOR(0,0,0,170), COLOR(0,0,0,170), COLOR(0,0,0,170), COLOR(0,0,0,170), BUTTON_NOJOYSEL, ButtonStyleFlat, NULL, NULL, exitFunc), ButtonType);
+
+    return out;
+}
+
+ShapeLinker_t *CreateBaseMessagePopup(char *title, char *message){ // Other code needs to add buttons at the bottom at Y 470 H 50, Count: 6
+    ShapeLinker_t *out = NULL;
+
+    SDL_Texture *screenshot = ScreenshotToTexture();
+    ShapeLinkAdd(&out, ImageCreate(screenshot, POS(0, 0, SCREEN_W, SCREEN_H), IMAGE_CLEANUPTEX), ImageType);
+    ShapeLinkAdd(&out, RectangleCreate(POS(0, 0, SCREEN_W, SCREEN_H), COLOR(0, 0, 0, 170), 1), RectangleType);
+    ShapeLinkAdd(&out, RectangleCreate(POS(250, 200, SCREEN_W - 500, 50), COLOR_TOPBAR, 1), RectangleType);
+    ShapeLinkAdd(&out, TextCenteredCreate(POS(260, 200, 0, 50), title, COLOR_WHITE, FONT_TEXT[FSize25]), TextCenteredType);
+    ShapeLinkAdd(&out, RectangleCreate(POS(250, 250, SCREEN_W - 500, 220), COLOR_CENTERLISTBG, 1), RectangleType);
+    ShapeLinkAdd(&out, TextCenteredCreate(POS(260, 260, SCREEN_W - 520, 200), message, COLOR_WHITE, FONT_TEXT[FSize28]), TextBoxType);
+
+    return out;
+}
+
 int EnlargePreviewImage(Context_t *ctx){
     ShapeLinker_t *all = ctx->all;
     ThemeInfo_t *target = ShapeLinkFind(all, DataType)->item;
@@ -83,15 +113,11 @@ int DownloadThemeButton(Context_t *ctx){
 }
 
 int InstallThemeButton(Context_t *ctx){
-    ShapeLinker_t *out = NULL;
+    ShapeLinker_t *out = CreateBaseMessagePopup("Install Queued!", "Install Queued. Exit the app to apply the theme.\nPress A to return");
 
-    SDL_Texture *screenshot = ScreenshotToTexture();
-    ShapeLinkAdd(&out, ImageCreate(screenshot, POS(0, 0, SCREEN_W, SCREEN_H), IMAGE_CLEANUPTEX), ImageType);
-    ShapeLinkAdd(&out, RectangleCreate(POS(0, 0, SCREEN_W, SCREEN_H), COLOR(0,0,0,170), 1), RectangleType);
-    ShapeLinkAdd(&out, ButtonCreate(POS(200, 300, SCREEN_W - 400, SCREEN_H - 600), COLOR_CENTERLISTBG, COLOR_CENTERLISTPRESS, COLOR_WHITE, COLOR_CENTERLISTBG, 0, ButtonStyleFlat, NULL, NULL, exitFunc), ButtonType);
-    ShapeLinkAdd(&out, TextCenteredCreate(POS(200, 350, SCREEN_W - 400, SCREEN_H - 650), "Install Queued. Exit the app to apply the theme. Press A to return", COLOR_WHITE, FONT_TEXT[FSize28]), TextCenteredType);
-    ShapeLinkAdd(&out, RectangleCreate(POS(200, 300, SCREEN_W - 400, 50), COLOR_TOPBAR, 1), RectangleType);
-    ShapeLinkAdd(&out, ImageCreate(XIcon, POS(SCREEN_W - 250, 300, 50, 50), 0), ImageType);
+    ShapeLinkAdd(&out, RectangleCreate(POS(980, 200, 50, 50), COLOR_CENTERLISTSELECTION, 1), RectangleType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(0, 0, SCREEN_W, SCREEN_H), COLOR(0,0,0,0), COLOR(0,0,0,0), COLOR(0,0,0,0), COLOR(0,0,0,0), 0, ButtonStyleFlat, NULL, NULL, exitFunc), ButtonType);
+    ShapeLinkAdd(&out, ImageCreate(XIcon, POS(980, 200, 50, 50), 0), ImageType);
 
 
     int res = DownloadThemeButton(ctx);
@@ -319,19 +345,9 @@ int SideMenuSetSearch(Context_t *ctx){
 }
 
 ShapeLinker_t *CreateSideFilterMenu(FilterOptions_t *options){
-    ShapeLinker_t *out = NULL;
-
-    SDL_Texture *screenshot = ScreenshotToTexture();
-    ShapeLinkAdd(&out, ImageCreate(screenshot, POS(0, 0, SCREEN_W, SCREEN_H), IMAGE_CLEANUPTEX), ImageType);
-    ShapeLinkAdd(&out, RectangleCreate(POS(0, 50, 400, SCREEN_H - 50), COLOR_CENTERLISTBG, 1), RectangleType);
+    ShapeLinker_t *out = CreateSideBaseMenu("Select filters:");
 
     ShapeLinkAdd(&out, options, DataType);
-
-    ShapeLinkAdd(&out, RectangleCreate(POS(0, 0, 350, 50), COLOR_TOPBAR, 1), RectangleType);
-    ShapeLinkAdd(&out, TextCenteredCreate(POS(0, 0, 400, 50), "Select filters:", COLOR_WHITE, FONT_TEXT[FSize25]), TextCenteredType);
-    ShapeLinkAdd(&out, ButtonCreate(POS(350, 0, 50, 50), COLOR_TOPBAR, COLOR_RED, COLOR_WHITE, COLOR_TOPBARSELECTION, 0, ButtonStyleFlat, NULL, NULL, exitFunc), ButtonType);
-    ShapeLinkAdd(&out, ImageCreate(XIcon, POS(350, 0, 50, 50), 0), ImageType);
-    ShapeLinkAdd(&out, ButtonCreate(POS(400, 0, SCREEN_W - 400, SCREEN_H), COLOR(0,0,0,170), COLOR(0,0,0,170), COLOR(0,0,0,170), COLOR(0,0,0,170), BUTTON_NOJOYSEL, ButtonStyleFlat, NULL, NULL, exitFunc), ButtonType);
 
     char *search = CopyTextArgsUtil("Search: %s", (options->search[0]) ? options->search : "None");
     ShapeLinkAdd(&out, RectangleCreate(POS(0, 60, 400, 50), COLOR_BTN2, 1), RectangleType);
@@ -405,16 +421,7 @@ const char *targetOptions[] = {
 };
 
 ShapeLinker_t *CreateSideTargetMenu(){
-    ShapeLinker_t *out = NULL;
-
-    SDL_Texture *screenshot = ScreenshotToTexture();
-    ShapeLinkAdd(&out, ImageCreate(screenshot, POS(0, 0, SCREEN_W, SCREEN_H), IMAGE_CLEANUPTEX), ImageType);
-
-    ShapeLinkAdd(&out, RectangleCreate(POS(0, 0, 350, 50), COLOR_TOPBAR, 1), RectangleType);
-    ShapeLinkAdd(&out, TextCenteredCreate(POS(0, 0, 400, 50), "Select a target:", COLOR_WHITE, FONT_TEXT[FSize25]), TextCenteredType);
-    ShapeLinkAdd(&out, ButtonCreate(POS(350, 0, 50, 50), COLOR_TOPBAR, COLOR_RED, COLOR_WHITE, COLOR_TOPBARSELECTION, 0, ButtonStyleFlat, NULL, NULL, exitFunc), ButtonType);
-    ShapeLinkAdd(&out, ImageCreate(XIcon, POS(350, 0, 50, 50), 0), ImageType);
-    ShapeLinkAdd(&out, ButtonCreate(POS(400, 0, SCREEN_W - 400, SCREEN_H), COLOR(0,0,0,170), COLOR(0,0,0,170), COLOR(0,0,0,170), COLOR(0,0,0,170), BUTTON_NOJOYSEL, ButtonStyleFlat, NULL, NULL, exitFunc), ButtonType);
+    ShapeLinker_t *out = CreateSideBaseMenu("Select a target:");
 
     ShapeLinker_t *list = NULL;
     for (int i = 0; i < 7; i++)
@@ -436,16 +443,76 @@ int ShowSideTargetMenu(Context_t *ctx){
         int selection = lv->highlight;
         RequestInfo_t *rI = ShapeLinkFind(ctx->all, DataType)->item;
         if (rI->target != selection){
+            int tempTarget = rI->target;
+            int tempPage = rI->page;
             SetDefaultsRequestInfo(rI);
             rI->target = selection;
             printf("Making request...\n");
-            MakeRequestAsCtx(ctx, rI);
+            if (MakeRequestAsCtx(ctx, rI)){
+                rI->target = tempTarget;
+                rI->page = tempPage;
+            }
         }
     }
 
     ShapeLinkDispose(&menu);
-    return (menuCtx.curOffset == 7 && menuCtx.origin == OriginFunction) ? -1 : 0; 
+    return (menuCtx.curOffset == 8 && menuCtx.origin == OriginFunction) ? -1 : 0; 
 } 
+
+int HandleQueueList(Context_t *ctx){
+    ListView_t *lv = ShapeLinkFind(ctx->all, ListViewType)->item;
+
+    if (!CheckIfInstallSlotIsFree(lv->highlight)){
+        char *message = CopyTextArgsUtil("Are you sure you want to remove the %s's queued install?", targetOptions[lv->highlight]);
+        ShapeLinker_t *menu = CreateBaseMessagePopup("Remove Queued item?", message);
+        free(message);
+
+        ShapeLinkAdd(&menu, ButtonCreate(POS(640, 470, 390, 50), COLOR_CENTERLISTBG, COLOR_CENTERLISTPRESS, COLOR_WHITE, COLOR_CENTERLISTSELECTION, 0, ButtonStyleBottomStrip, "No", FONT_TEXT[FSize28], exitFunc), ButtonType);
+        ShapeLinkAdd(&menu, ButtonCreate(POS(250, 470, 390, 50), COLOR_CENTERLISTBG, COLOR_RED, COLOR_WHITE, COLOR_CENTERLISTSELECTION, 0, ButtonStyleBottomStrip, "Yes", FONT_TEXT[FSize28], exitFunc), ButtonType);
+
+        Context_t menuCtx = MakeMenu(menu, ButtonHandlerBExit, NULL);
+        ShapeLinkDispose(&menu);
+
+        if (menuCtx.curOffset == 7 && menuCtx.origin == OriginFunction){
+            SetInstallSlot(lv->highlight, NULL);
+            ShapeLinkDispose(&lv->text);
+
+            ShapeLinker_t *text = NULL;
+            for (int i = 0; i < 7; i++){
+                char *t = CopyTextArgsUtil("%s: %s", targetOptions[i], (CheckIfInstallSlotIsFree(i)) ? "Not Queued" : "Queued");
+                ShapeLinkAdd(&text, ListItemCreate((CheckIfInstallSlotIsFree(i)) ? COLOR_WHITE : COLOR_GREEN, COLOR_WHITE, NULL, t, NULL), ListItemType);
+                free(t);
+            }
+
+            lv->text = text;
+        }
+    }
+
+    return 0;
+}
+
+ShapeLinker_t *CreateSideQueueMenu(){
+    ShapeLinker_t *out = CreateSideBaseMenu("Currently queued installs:");
+
+    ShapeLinker_t *text = NULL;
+    for (int i = 0; i < 7; i++){
+        char *t = CopyTextArgsUtil("%s: %s", targetOptions[i], (CheckIfInstallSlotIsFree(i)) ? "Not Queued" : "Queued");
+        ShapeLinkAdd(&text, ListItemCreate((CheckIfInstallSlotIsFree(i)) ? COLOR_WHITE : COLOR_GREEN, COLOR_WHITE, NULL, t, NULL), ListItemType);
+        free(t);
+    }
+
+    ShapeLinkAdd(&out, ListViewCreate(POS(0, 50, 400, SCREEN_H - 100), 75, COLOR_CENTERLISTBG, COLOR_CENTERLISTSELECTION, COLOR_CENTERLISTPRESS, 0, text, HandleQueueList, NULL, FONT_TEXT[FSize28]), ListViewType);
+
+    return out;
+}
+
+int ShowSideQueueMenu(Context_t *ctx){
+    ShapeLinker_t *menu = CreateSideQueueMenu();
+    MakeMenu(menu, ButtonHandlerBExit, NULL);
+    ShapeLinkDispose(&menu);
+
+    return 0;
+}
 
 ShapeLinker_t *CreateMainMenu(ShapeLinker_t *listItems, RequestInfo_t *rI) { 
     ShapeLinker_t *out = NULL;
@@ -470,7 +537,7 @@ ShapeLinker_t *CreateMainMenu(ShapeLinker_t *listItems, RequestInfo_t *rI) {
     ShapeLinkAdd(&out, ImageCreate(searchIcon, POS(150, 0, 60, 60), 0), ImageType);
 
     // SettingsButton
-    ShapeLinkAdd(&out, ButtonCreate(POS(240, 0, 120, 60), COLOR_TOPBARBUTTONS, COLOR_BTN3, COLOR_WHITE, COLOR_HIGHLIGHT, 0, ButtonStyleBottomStrip, NULL, NULL, NULL), ButtonType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(240, 0, 120, 60), COLOR_TOPBARBUTTONS, COLOR_BTN3, COLOR_WHITE, COLOR_HIGHLIGHT, 0, ButtonStyleBottomStrip, NULL, NULL, ShowSideQueueMenu), ButtonType);
     ShapeLinkAdd(&out, ImageCreate(setIcon, POS(270, 0, 60, 60), 0), ImageType);
 
     // SortButton

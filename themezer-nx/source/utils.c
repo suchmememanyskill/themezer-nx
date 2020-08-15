@@ -73,6 +73,14 @@ int CheckIfInstallSlotIsFree(int pos){
 }
 
 void SetInstallSlot(int pos, char *path){
+	if (path == NULL){
+		if (QueuedInstalls.paths[pos] != NULL){
+			free(QueuedInstalls.paths[pos]);
+			QueuedInstalls.paths[pos] = NULL;
+		}
+		return;
+	}
+	
 	int len = 0;
 
 	char *c = path;
