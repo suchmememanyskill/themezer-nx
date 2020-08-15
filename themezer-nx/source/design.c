@@ -59,7 +59,7 @@ SDL_Texture *menuIcon, *searchIcon, *setIcon, *arrowLIcon, *arrowRIcon, *LeImg, 
 int lennify(Context_t *ctx){
     static int lenny = false;
     if (!lenny){
-        ShapeLinkAdd(&ctx->all, ImageCreate(LeImg, POS(525, 0, 170, 60), 0), ImageType);
+        ShapeLinkAdd(&ctx->all, ImageCreate(LeImg, POS(495, 0, 170, 60), 0), ImageType);
         lenny = true;
     }
     return 0;
@@ -412,7 +412,12 @@ int ShowSideFilterMenu(Context_t *ctx){
         rI->sort = options.sort;
         rI->page = 1;
 
-        MakeRequestAsCtx(ctx, rI);
+        if (MakeRequestAsCtx(ctx, rI)){
+            if (rI->search != NULL)
+                free(rI->search);
+
+            rI->search = CopyTextUtil("");
+        }
     }
     else if (options.search != NULL)
         free(options.search);
@@ -553,7 +558,7 @@ ShapeLinker_t *CreateMainMenu(ShapeLinker_t *listItems, RequestInfo_t *rI) {
     ShapeLinkAdd(&out, ImageCreate(arrowLIcon, POS(830, 0, 60, 60), 0), ImageType);
 
     // Easter egg
-    ShapeLinkAdd(&out, ButtonCreate(POS(480, 0, 320, 60), COLOR_TOPBARBUTTONS, COLOR_TOPBARBUTTONS, COLOR_WHITE, COLOR_TOPBARBUTTONS, BUTTON_NOJOYSEL, ButtonStyleFlat, NULL, NULL, lennify), ButtonType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(495, 0, 170, 60), COLOR_TOPBARBUTTONS, COLOR_TOPBARBUTTONS, COLOR_WHITE, COLOR_TOPBARBUTTONS, BUTTON_NOJOYSEL, ButtonStyleFlat, NULL, NULL, lennify), ButtonType);
 
     // RightArrow
     ShapeLinkAdd(&out, ButtonCreate(POS(1160, 0, 120, 60), COLOR_TOPBARBUTTONS, COLOR_BTN5, COLOR_WHITE, COLOR_HIGHLIGHT, 0, ButtonStyleBottomStrip, NULL, NULL, NextPageButton), ButtonType);

@@ -79,6 +79,8 @@ int main(int argc, char* argv[])
     MakeMenu(mainMenu, NULL, (items != NULL) ? HandleDownloadQueue : NULL);
     ShapeLinkDispose(&mainMenu);
     
+    FreeThemes(&rI);
+
     if (themeInstallerLocation){
         if (CheckIfInstallsQueued()){
             if (R_SUCCEEDED(envSetNextLoad(themeInstallerLocation, GetInstallArgs(themeInstallerLocation)))){

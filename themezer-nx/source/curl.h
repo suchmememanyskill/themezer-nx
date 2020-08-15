@@ -60,3 +60,4 @@ int DownloadThemeFromID(char *id, char *path);
 int HandleDownloadQueue(Context_t *ctx);
 int AddThemeImagesToDownloadQueue(RequestInfo_t *rI);
 int CleanupTransferInfo(RequestInfo_t *rI);
+void FreeThemes(RequestInfo_t *rI);
