@@ -114,21 +114,6 @@ int MakeJsonRequest(char *url, cJSON **response){
     return res;
 }
 
-int MakeImageRequest(char *url, SDL_Texture **img){
-    get_request_t req = {0};
-    int res;
-    CURL *curl = CreateRequest(url, &req);
-
-    if (!(res = curl_easy_perform(curl))){
-        if (img){
-            *img = LoadImageMemSDL(req.buffer, req.len);
-        }
-    }
-
-    curl_easy_cleanup(curl);
-    return res;
-}
-
 int MakeDownloadRequest(char *url, char *path){
     get_request_t req = {0};
     int res;

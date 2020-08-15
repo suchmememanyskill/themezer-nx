@@ -19,6 +19,23 @@ int ButtonHandlerBExit(Context_t *ctx){
 
     return 0;
 }
+
+const char *targetOptions[] = {
+    "Home Menu",
+    "Lock Screen",
+    "All Apps",
+    "Player Select",
+    "Settings",
+    "User Page",
+    "News"
+};
+
+int InstallButtonState = 0;
+
+void SetInstallButtonState(int state){
+    InstallButtonState = state;
+}
+
 SDL_Texture *menuIcon, *searchIcon, *setIcon, *sortIcon, *arrowLIcon, *arrowRIcon, *LeImg, *XIcon, *loadingScreen; 
 
 int lennify(Context_t *ctx){
@@ -75,8 +92,9 @@ int EnlargePreviewImage(Context_t *ctx){
 }
 
 int DownloadThemeButton(Context_t *ctx){
-    ShapeLinker_t *all = ctx->all;
-    ThemeInfo_t *target = ShapeLinkFind(all, DataType)->item;
+    ShapeLinker_t *targetLink = ShapeLinkFind(ctx->all, DataType);
+    ThemeInfo_t *target = targetLink->item;
+    RequestInfo_t *rI = targetLink->next->item;
 
     ShapeLinker_t *render = NULL;
 
@@ -88,13 +106,7 @@ int DownloadThemeButton(Context_t *ctx){
 
     RenderShapeLinkList(render);
 
-    mkdir("/Themes/", 0777);
-
-    char *creatorPath = CopyTextArgsUtil("/Themes/%s", target->creator);
-    mkdir(creatorPath, 0777);
-
-    char *path = CopyTextArgsUtil("%s/%s.nxtheme", creatorPath, target->name);
-
+    char *path = GetThemePath(target->creator, target->name, targetOptions[rI->target]);
     int res = DownloadThemeFromID(target->id, path);
 
     if (res){
@@ -107,7 +119,6 @@ int DownloadThemeButton(Context_t *ctx){
     ShapeLinkDispose(&render);
 
     free(path);
-    free(creatorPath);
 
     return res;
 }
@@ -115,17 +126,16 @@ int DownloadThemeButton(Context_t *ctx){
 int InstallThemeButton(Context_t *ctx){
     ShapeLinker_t *out = CreateBaseMessagePopup("Install Queued!", "Install Queued. Exit the app to apply the theme.\nPress A to return");
 
-    ShapeLinkAdd(&out, RectangleCreate(POS(980, 200, 50, 50), COLOR_CENTERLISTSELECTION, 1), RectangleType);
+    ShapeLinkAdd(&out, RectangleCreate(POS(250, 470, 780, 50), COLOR_CENTERLISTSELECTION, 1), RectangleType);
     ShapeLinkAdd(&out, ButtonCreate(POS(0, 0, SCREEN_W, SCREEN_H), COLOR(0,0,0,0), COLOR(0,0,0,0), COLOR(0,0,0,0), COLOR(0,0,0,0), 0, ButtonStyleFlat, NULL, NULL, exitFunc), ButtonType);
-    ShapeLinkAdd(&out, ImageCreate(XIcon, POS(980, 200, 50, 50), 0), ImageType);
-
+    ShapeLinkAdd(&out, TextCenteredCreate(POS(250, 470, 780, 50), "Got it!", COLOR_WHITE, FONT_TEXT[FSize28]), TextCenteredType);
 
     int res = DownloadThemeButton(ctx);
     if (!res){
         ShapeLinker_t *targetLink = ShapeLinkFind(ctx->all, DataType);
         ThemeInfo_t *target = targetLink->item;
         RequestInfo_t *rI = targetLink->next->item;
-        char *path = CopyTextArgsUtil("/Themes/%s/%s.nxtheme", target->creator, target->name);
+        char *path = GetThemePath(target->creator, target->name, targetOptions[rI->target]);
 
         SetInstallSlot(rI->target, path);
 
@@ -155,7 +165,7 @@ ShapeLinker_t *CreateSelectMenu(ThemeInfo_t *target, RequestInfo_t *rI){
     ShapeLinkAdd(&out, ButtonCreate(POS(50, 100, 860, 488), COLOR_CENTERLISTBG, COLOR_WHITE, COLOR_WHITE, COLOR_CENTERLISTSELECTION, 0, ButtonStyleFlat, NULL, NULL, EnlargePreviewImage), ButtonType);
     ShapeLinkAdd(&out, ImageCreate(target->preview, POS(55, 105, 850, 478), 0), ImageType);
 
-    ShapeLinkAdd(&out, ButtonCreate(POS(915, 110, SCREEN_W - 980, 60), COLOR_INSTBTN, COLOR_GREEN, COLOR_WHITE, COLOR_INSTBTNSEL, 0, ButtonStyleFlat, "Install Theme", FONT_TEXT[FSize33], InstallThemeButton), ButtonType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(915, 110, SCREEN_W - 980, 60), COLOR_INSTBTN, COLOR_GREEN, COLOR_WHITE, COLOR_INSTBTNSEL, (InstallButtonState) ? 0 : BUTTON_DISABLED, ButtonStyleFlat, "Install Theme", FONT_TEXT[FSize33], InstallThemeButton), ButtonType);
     ShapeLinkAdd(&out, ButtonCreate(POS(915, 180, SCREEN_W - 980, 60), COLOR_DLBTN, COLOR_GREEN, COLOR_WHITE, COLOR_DLBTNSEL, 0, ButtonStyleFlat, "Download Theme", FONT_TEXT[FSize33], DownloadThemeButton), ButtonType);
 
     char *info = CopyTextArgsUtil("Creator: %s\n\nLast Updated: %s\n\nDownload Count: %d\nLike Count: %d\nID: t%s", target->creator, target->lastUpdated, target->dlCount, target->likeCount, target->id);
@@ -410,15 +420,7 @@ int ShowSideFilterMenu(Context_t *ctx){
     return 0;
 }
 
-const char *targetOptions[] = {
-    "Home Menu",
-    "Lock Screen",
-    "All Apps",
-    "Player Select",
-    "Settings",
-    "User Page",
-    "News"
-};
+
 
 ShapeLinker_t *CreateSideTargetMenu(){
     ShapeLinker_t *out = CreateSideBaseMenu("Select a target:");
@@ -536,9 +538,11 @@ ShapeLinker_t *CreateMainMenu(ShapeLinker_t *listItems, RequestInfo_t *rI) {
     ShapeLinkAdd(&out, ButtonCreate(POS(120, 0, 120, 60), COLOR_TOPBARBUTTONS, COLOR_BTN2, COLOR_WHITE, COLOR_HIGHLIGHT, 0, ButtonStyleBottomStrip, NULL, NULL, ShowSideFilterMenu), ButtonType);
     ShapeLinkAdd(&out, ImageCreate(searchIcon, POS(150, 0, 60, 60), 0), ImageType);
 
-    // SettingsButton
-    ShapeLinkAdd(&out, ButtonCreate(POS(240, 0, 120, 60), COLOR_TOPBARBUTTONS, COLOR_BTN3, COLOR_WHITE, COLOR_HIGHLIGHT, 0, ButtonStyleBottomStrip, NULL, NULL, ShowSideQueueMenu), ButtonType);
-    ShapeLinkAdd(&out, ImageCreate(setIcon, POS(270, 0, 60, 60), 0), ImageType);
+    if (InstallButtonState){
+        // SettingsButton
+        ShapeLinkAdd(&out, ButtonCreate(POS(240, 0, 120, 60), COLOR_TOPBARBUTTONS, COLOR_BTN3, COLOR_WHITE, COLOR_HIGHLIGHT, 0, ButtonStyleBottomStrip, NULL, NULL, ShowSideQueueMenu), ButtonType);
+        ShapeLinkAdd(&out, ImageCreate(setIcon, POS(270, 0, 60, 60), 0), ImageType);
+    }
 
     // SortButton
     //ShapeLinkAdd(&out, ButtonCreate(POS(360, 0, 120, 60), COLOR_TOPBARBUTTONS, COLOR_BTN4, COLOR_WHITE, COLOR_HIGHLIGHT, 0, ButtonStyleBottomStrip, NULL, NULL, ShowSideFilterMenu), ButtonType);

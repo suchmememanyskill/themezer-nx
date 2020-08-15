@@ -2,6 +2,34 @@
 #include <switch.h>
 #include <stdlib.h>
 #include <JAGL.h>
+#include <unistd.h>
+#include <sys/stat.h> 
+
+const char *possibleThemeInstallerPaths[] = {
+	"/switch/NXThemesInstaller.nro",
+	"/switch/Switch_themes_Installer/NXThemesInstaller.nro"
+};
+
+const char* GetThemeInstallerPath(){
+	for (int i = 0; i < 2; i++){
+		if (access(possibleThemeInstallerPaths[i], F_OK) != -1){
+			return possibleThemeInstallerPaths[i];
+		}
+	}
+
+	return NULL;
+}
+
+char *GetThemePath(const char *creator, const char *themeName, const char *themeType){
+	char *typePath = CopyTextArgsUtil("/Themes/ThemezerNX/%s", themeType);
+	mkdir(typePath, 0777);
+	char *creatorPath = CopyTextArgsUtil("%s/%s", typePath, creator);
+	mkdir(creatorPath, 0777);
+	char *themePath = CopyTextArgsUtil("%s/%s.nxtheme", creatorPath, themeName);
+	free(creatorPath);
+	free(typePath);
+	return themePath;
+}
 
 char* showKeyboard(char* message, u64 size){
 	SwkbdConfig	skp; 
@@ -114,7 +142,7 @@ void SetInstallSlot(int pos, char *path){
 	QueuedInstalls.paths[pos] = out;
 }
 
-char *GetInstallArgs(char *path){
+char *GetInstallArgs(const char *path){
 	int len = 15, pathAmount = 0, temp = 0;
 	len += strlen(path);
 

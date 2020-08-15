@@ -71,3 +71,5 @@ int exitFunc(Context_t *ctx);
 int ButtonHandlerBExit(Context_t *ctx);
 ShapeLinker_t *CreateFileExplorerMenu(ShapeLinker_t *dirList, char *curPath);
 ShapeLinker_t *CreateMainMenu(ShapeLinker_t *listItems, RequestInfo_t *rI);
+ShapeLinker_t *CreateBaseMessagePopup(char *title, char *message);
+void SetInstallButtonState(int state);
