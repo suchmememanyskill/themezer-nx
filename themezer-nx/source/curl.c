@@ -41,7 +41,7 @@ char *GenLink(RequestInfo_t *rI){
     }
     
     static char request[0x400];
-    sprintf(request, "https://api.themezer.ga/?query=query($target:String,$page:Int,$limit:Int,$sort:String,$order:String,$query:String){themeList(target:$target,page:$page,limit:$limit,sort:$sort,order:$order,query:$query){id,creator{display_name},details{name,description},categories,last_updated,dl_count,like_count,preview{original}}}&variables={\"target\":\"%s\",\"page\":%d,\"limit\":%d,\"sort\":\"%s\",\"order\":\"%s\",\"query\":%s}",\
+    snprintf(request, 0x400,"https://api.themezer.ga/?query=query($target:String,$page:Int,$limit:Int,$sort:String,$order:String,$query:String){themeList(target:$target,page:$page,limit:$limit,sort:$sort,order:$order,query:$query){id,creator{display_name},details{name,description},categories,last_updated,dl_count,like_count,preview{original}}}&variables={\"target\":\"%s\",\"page\":%d,\"limit\":%d,\"sort\":\"%s\",\"order\":\"%s\",\"query\":%s}",\
     requestTargets[rI->target], rI->page, rI->limit, requestSorts[rI->sort], requestOrders[rI->order], searchQuoted);
     
     free(searchQuoted);
@@ -51,7 +51,7 @@ char *GenLink(RequestInfo_t *rI){
 
 char *GenNxThemeReqLink(char *id){
     static char request[0x50];
-    sprintf(request, "https://api.themezer.ga/?query=query{nxinstaller(id:\"%s\"){themes{url}}}", id);
+    snprintf(request, 0x50, "https://api.themezer.ga/?query=query{nxinstaller(id:\"t%s\"){themes{url}}}", id);
     return request;
 }
 
@@ -135,9 +135,11 @@ int MakeDownloadRequest(char *url, char *path){
 
 char *GetThemeDownloadURL(char *id){
     cJSON *list;
+    int res;
     char *out = NULL;
 
-    if (MakeJsonRequest(GenNxThemeReqLink(id), &list)){
+    if ((res = MakeJsonRequest(GenNxThemeReqLink(id), &list))){
+        printf("theme url parsing failed! code: %d\n", res);
         return NULL;
     }
 
@@ -164,7 +166,7 @@ char *GetThemeDownloadURL(char *id){
 int DownloadThemeFromID(char *id, char *path){
     int res = 1;
     char *url = GetThemeDownloadURL(id);
-    printf("Url gathered: %s", url);
+    printf("Url gathered: %s\n", url);
 
     if (url){
         res = MakeDownloadRequest(url, path);
@@ -295,17 +297,14 @@ int AddThemeImagesToDownloadQueue(RequestInfo_t *rI){
     rI->tInfo.transferer = curl_multi_init();
     rI->tInfo.finished = false;
     curl_multi_setopt(rI->tInfo.transferer, CURLMOPT_MAXCONNECTS, (long)7);
+    curl_multi_setopt(rI->tInfo.transferer, CURLMOPT_MAX_TOTAL_CONNECTIONS, (long)7);
+    curl_multi_setopt(rI->tInfo.transferer, CURLMOPT_PIPELINING, CURLPIPE_MULTIPLEX);
 
     for (int i = 0; i < rI->curPageItemCount; i++){
             rI->tInfo.transfers[i].transfer = CreateRequest(rI->themes[i].imgLink, &rI->tInfo.transfers[i].data);
             rI->tInfo.transfers[i].index = i;
             curl_easy_setopt(rI->tInfo.transfers[i].transfer, CURLOPT_PRIVATE, &rI->tInfo.transfers[i].index); 
-    }
-
-    rI->tInfo.queueOffset = MIN(7, rI->curPageItemCount);
-
-    for (int i = 0; i < rI->tInfo.queueOffset; i++){
-        curl_multi_add_handle(rI->tInfo.transferer, rI->tInfo.transfers[i].transfer);
+            curl_multi_add_handle(rI->tInfo.transferer, rI->tInfo.transfers[i].transfer);
     }
 
     return 0;
@@ -357,10 +356,6 @@ int HandleDownloadQueue(Context_t *ctx){
                 li->leftImg = rI->themes[*index].preview;
             }
             
-            if (rI->curPageItemCount > rI->tInfo.queueOffset){
-                curl_multi_add_handle(rI->tInfo.transferer, rI->tInfo.transfers[rI->tInfo.queueOffset++].transfer);
-            }
-            
         }
     }
 
@@ -374,7 +369,7 @@ int HandleDownloadQueue(Context_t *ctx){
 
 void SetDefaultsRequestInfo(RequestInfo_t *rI){
     rI->target = 0;
-    rI->limit = 16;
+    rI->limit = 20;
     rI->page = 1;
     rI->sort = 0;
     rI->order = 0;
