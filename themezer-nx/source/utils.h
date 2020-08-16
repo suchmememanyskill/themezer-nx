@@ -6,7 +6,7 @@ typedef struct {
     u8 len;
 } ThemeInstallerArgs_t;
 
-char* showKeyboard(char* message, u64 size);
+char* showKeyboard(char* message, char* initialText, u64 size);
 int isStringNullOrEmpty(const char *in);
 char *SanitizeString(const char *name);
 char *GetInstallArgs(const char *path);

@@ -31,7 +31,7 @@ char *GetThemePath(const char *creator, const char *themeName, const char *theme
 	return themePath;
 }
 
-char* showKeyboard(char* message, u64 size){
+char* showKeyboard(char* message, char* initialText, u64 size){
 	SwkbdConfig	skp; 
 	Result keyrc = swkbdCreate(&skp, 0);
 	char* out = NULL;
@@ -40,6 +40,9 @@ char* showKeyboard(char* message, u64 size){
 	if (R_SUCCEEDED(keyrc) && out != NULL){
 		swkbdConfigMakePresetDefault(&skp);
 		swkbdConfigSetGuideText(&skp, message);
+		if (initialText)
+			swkbdConfigSetInitialText(&skp, initialText);
+		swkbdConfigSetStringLenMax(&skp, size);
 		keyrc = swkbdShow(&skp, out, size);
 		swkbdClose(&skp);	
 	}
