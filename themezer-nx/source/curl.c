@@ -41,7 +41,7 @@ char *GenLink(RequestInfo_t *rI){
     }
     
     static char request[0x400];
-    snprintf(request, 0x400,"https://api.themezer.ga/?query=query($target:String,$page:Int,$limit:Int,$sort:String,$order:String,$query:String){themeList(target:$target,page:$page,limit:$limit,sort:$sort,order:$order,query:$query){id,creator{display_name},details{name,description},categories,last_updated,dl_count,like_count,preview{original}}}&variables={\"target\":\"%s\",\"page\":%d,\"limit\":%d,\"sort\":\"%s\",\"order\":\"%s\",\"query\":%s}",\
+    snprintf(request, 0x400,"https://api.themezer.net/?query=query($target:String,$page:Int,$limit:Int,$sort:String,$order:String,$query:String){themeList(target:$target,page:$page,limit:$limit,sort:$sort,order:$order,query:$query){id,creator{display_name},details{name,description},categories,last_updated,dl_count,like_count,preview{original}}}&variables={\"target\":\"%s\",\"page\":%d,\"limit\":%d,\"sort\":\"%s\",\"order\":\"%s\",\"query\":%s}",\
     requestTargets[rI->target], rI->page, rI->limit, requestSorts[rI->sort], requestOrders[rI->order], searchQuoted);
     
     free(searchQuoted);
@@ -51,7 +51,7 @@ char *GenLink(RequestInfo_t *rI){
 
 char *GenNxThemeReqLink(char *id){
     static char request[0x50];
-    snprintf(request, 0x50, "https://api.themezer.ga/?query=query{nxinstaller(id:\"t%s\"){themes{url}}}", id);
+    snprintf(request, 0x50, "https://api.themezer.net/?query=query{nxinstaller(id:\"t%s\"){themes{url}}}", id);
     return request;
 }
 
