@@ -64,8 +64,8 @@ static size_t write_callback(char *ptr, size_t size, size_t nmemb, void *userdat
 
     while (req->buflen < req->len + realsize + 1)
     {
-        req->buffer = realloc(req->buffer, req->buflen + CHUNK_SIZE);
-        req->buflen += CHUNK_SIZE;
+        req->buffer = realloc(req->buffer, req->buflen * 2);
+        req->buflen *= 2;
     }
     memcpy(&req->buffer[req->len], ptr, realsize);
     req->len += realsize;
@@ -317,6 +317,7 @@ int CleanupTransferInfo(RequestInfo_t *rI){
     for (int i = 0; i < rI->tInfo.queueOffset; i++){
         curl_multi_remove_handle(rI->tInfo.transferer, rI->tInfo.transfers[i].transfer);
         curl_easy_cleanup(rI->tInfo.transfers[i].transfer);
+        free(rI->tInfo.transfers[i].data.buffer);
     }
 
     curl_multi_cleanup(rI->tInfo.transferer);
@@ -351,7 +352,6 @@ int HandleDownloadQueue(Context_t *ctx){
                 printf("Download of index %d finished!\n", *index);
                 get_request_t *req = &rI->tInfo.transfers[*index].data;
                 rI->themes[*index].preview = LoadImageMemSDL(req->buffer, req->len);
-                free(req->buffer);
                 ListItem_t *li = ShapeLinkOffset(gv->text, *index)->item;
                 li->leftImg = rI->themes[*index].preview;
             }
