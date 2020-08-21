@@ -96,8 +96,14 @@ ShapeLinker_t *CreateBaseMessagePopup(char *title, char *message){ // Other code
 }
 
 int EnlargePreviewImage(Context_t *ctx){
-    ShapeLinker_t *all = ctx->all;
-    ThemeInfo_t *target = ShapeLinkFind(all, DataType)->item;
+    RequestInfo_t *rI = ShapeLinkFind(ctx->all, DataType)->item;
+    ThemeInfo_t *target = rI->themes;
+
+    int w, h;
+    SDL_QueryTexture(target->preview, NULL, NULL, &w, &h);
+
+    if (w < 1000 || h < 700)
+        return 0;
 
     ShapeLinker_t *menu = NULL;
     ShapeLinkAdd(&menu, ButtonCreate(POS(0, 0, SCREEN_W, SCREEN_H), COLOR_WHITE, COLOR_WHITE, COLOR_WHITE, COLOR_WHITE, 0, ButtonStyleFlat, NULL, NULL, exitFunc), ButtonType);
@@ -110,9 +116,8 @@ int EnlargePreviewImage(Context_t *ctx){
 }
 
 int DownloadThemeButton(Context_t *ctx){
-    ShapeLinker_t *targetLink = ShapeLinkFind(ctx->all, DataType);
-    ThemeInfo_t *target = targetLink->item;
-    RequestInfo_t *rI = targetLink->next->item;
+    RequestInfo_t *rI = ShapeLinkFind(ctx->all, DataType)->item;
+    ThemeInfo_t *target = rI->themes;
 
     ShapeLinker_t *render = NULL;
 
@@ -150,9 +155,9 @@ int InstallThemeButton(Context_t *ctx){
 
     int res = DownloadThemeButton(ctx);
     if (!res){
-        ShapeLinker_t *targetLink = ShapeLinkFind(ctx->all, DataType);
-        ThemeInfo_t *target = targetLink->item;
-        RequestInfo_t *rI = targetLink->next->item;
+        RequestInfo_t *rI = ShapeLinkFind(ctx->all, DataType)->item;
+        ThemeInfo_t *target = rI->themes;
+        
         char *path = GetThemePath(target->creator, target->name, targetOptions[rI->target]);
 
         SetInstallSlot(rI->target, path);
@@ -165,8 +170,9 @@ int InstallThemeButton(Context_t *ctx){
     return 0;
 }
 
-ShapeLinker_t *CreateSelectMenu(ThemeInfo_t *target, RequestInfo_t *rI){
+ShapeLinker_t *CreateSelectMenu(RequestInfo_t *rI){
     ShapeLinker_t *out = NULL;
+    ThemeInfo_t *target = rI->themes;
 
     SDL_Texture *screenshot = ScreenshotToTexture();
     ShapeLinkAdd(&out, ImageCreate(screenshot, POS(0, 0, SCREEN_W, SCREEN_H), IMAGE_CLEANUPTEX), ImageType);
@@ -178,10 +184,11 @@ ShapeLinker_t *CreateSelectMenu(ThemeInfo_t *target, RequestInfo_t *rI){
     ShapeLinkAdd(&out, TextCenteredCreate(POS(55, 50, 0 /* 0 width left alligns it */, 50), target->name, COLOR_WHITE, FONT_TEXT[FSize30]), TextCenteredType);
 
     ShapeLinkAdd(&out, ButtonCreate(POS(SCREEN_W - 100, 50, 50, 50), COLOR_TOPBAR, COLOR_RED, COLOR_WHITE, COLOR_TOPBARSELECTION, 0, ButtonStyleFlat, NULL, NULL, exitFunc), ButtonType);
-    ShapeLinkAdd(&out, ImageCreate(XIcon, POS(SCREEN_W - 100, 50, 50, 50), 0), ImageType);
 
     ShapeLinkAdd(&out, ButtonCreate(POS(50, 100, 860, 488), COLOR_CENTERLISTBG, COLOR_WHITE, COLOR_WHITE, COLOR_CENTERLISTSELECTION, 0, ButtonStyleFlat, NULL, NULL, EnlargePreviewImage), ButtonType);
     ShapeLinkAdd(&out, ImageCreate(target->preview, POS(55, 105, 850, 478), 0), ImageType);
+
+    ShapeLinkAdd(&out, ImageCreate(XIcon, POS(SCREEN_W - 100, 50, 50, 50), 0), ImageType);
 
     ShapeLinkAdd(&out, ButtonCreate(POS(915, 110, SCREEN_W - 980, 60), COLOR_INSTBTN, COLOR_INSTBTNPRS, COLOR_WHITE, COLOR_INSTBTNSEL, (InstallButtonState) ? 0 : BUTTON_DISABLED, ButtonStyleFlat, "Install Theme", FONT_TEXT[FSize30], InstallThemeButton), ButtonType);
     ShapeLinkAdd(&out, ButtonCreate(POS(915, 180, SCREEN_W - 980, 60), COLOR_DLBTN, COLOR_DLBTNPRS, COLOR_WHITE, COLOR_DLBTNSEL, 0, ButtonStyleFlat, "Download Theme", FONT_TEXT[FSize30], DownloadThemeButton), ButtonType);
@@ -196,7 +203,6 @@ ShapeLinker_t *CreateSelectMenu(ThemeInfo_t *target, RequestInfo_t *rI){
     free(desc);
     //ShapeLinkAdd()
 
-    ShapeLinkAdd(&out, target, DataType);
     ShapeLinkAdd(&out, rI, DataType);
 
     return out;
@@ -211,10 +217,33 @@ int ThemeSelect(Context_t *ctx){
     if (target->preview == NULL)
         return 0;
 
-    ShapeLinker_t *menu = CreateSelectMenu(target, rI);
-    MakeMenu(menu, ButtonHandlerBExit, NULL);
+    int w, h, update = 1;
+    SDL_QueryTexture(target->preview, NULL, NULL, &w, &h);
+
+    if (w >= 1000 && h >= 700)
+        update = 0;
+
+    RequestInfo_t customRI = {0};
+    customRI.curPageItemCount = 1;
+    customRI.themes = target;
+    customRI.target = rI->target;
+
+    if (update)
+        AddThemeImagesToDownloadQueue(&customRI, false);
+
+    ShapeLinker_t *menu = CreateSelectMenu(&customRI);
+    MakeMenu(menu, ButtonHandlerBExit, (update) ? HandleDownloadQueue : NULL);
     ShapeLinkDispose(&menu);
 
+    if (update){
+        CleanupTransferInfo(&customRI);
+        ListItem_t *li = ShapeLinkOffset(gv->text, gv->highlight)->item;
+        if (li->leftImg != target->preview){
+            SDL_DestroyTexture(li->leftImg);
+            li->leftImg = target->preview;
+        }
+    }
+        
     return 0;
 }
 
@@ -230,7 +259,7 @@ int MakeRequestAsCtx(Context_t *ctx, RequestInfo_t *rI){
         if (!(res = GenThemeArray(rI))){
             printf("JSON data parsed!\n");
             items = GenListItemList(rI);
-            AddThemeImagesToDownloadQueue(rI);
+            AddThemeImagesToDownloadQueue(rI, true);
 
             ShapeLinker_t *all = ctx->all;
             ListGrid_t *gv = ShapeLinkFind(all, ListGridType)->item;
@@ -424,8 +453,6 @@ int ShowSideFilterMenu(Context_t *ctx){
 
     return 0;
 }
-
-
 
 ShapeLinker_t *CreateSideTargetMenu(){
     ShapeLinker_t *out = CreateSideBaseMenu("Select a target:");

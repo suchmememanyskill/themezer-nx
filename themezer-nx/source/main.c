@@ -66,7 +66,7 @@ int main(int argc, char* argv[])
     if (!MakeJsonRequest(GenLink(&rI), &rI.response)){
         if (!(res = GenThemeArray(&rI))){
             items = GenListItemList(&rI);
-            AddThemeImagesToDownloadQueue(&rI);
+            AddThemeImagesToDownloadQueue(&rI, true);
         }
         else
             printf(CopyTextArgsUtil("Theme array gen failed, %d", res));

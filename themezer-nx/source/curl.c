@@ -41,7 +41,7 @@ char *GenLink(RequestInfo_t *rI){
     }
     
     static char request[0x400];
-    snprintf(request, 0x400,"https://api.themezer.net/?query=query($target:String,$page:Int,$limit:Int,$sort:String,$order:String,$query:String){themeList(target:$target,page:$page,limit:$limit,sort:$sort,order:$order,query:$query){id,creator{display_name},details{name,description},categories,last_updated,dl_count,like_count,preview{original}}}&variables={\"target\":\"%s\",\"page\":%d,\"limit\":%d,\"sort\":\"%s\",\"order\":\"%s\",\"query\":%s}",\
+    snprintf(request, 0x400,"https://api.themezer.net/?query=query($target:String,$page:Int,$limit:Int,$sort:String,$order:String,$query:String){themeList(target:$target,page:$page,limit:$limit,sort:$sort,order:$order,query:$query){id,creator{display_name},details{name,description},categories,last_updated,dl_count,like_count,preview{original,thumb}}}&variables={\"target\":\"%s\",\"page\":%d,\"limit\":%d,\"sort\":\"%s\",\"order\":\"%s\",\"query\":%s}",\
     requestTargets[rI->target], rI->page, rI->limit, requestSorts[rI->sort], requestOrders[rI->order], searchQuoted);
     
     free(searchQuoted);
@@ -190,6 +190,7 @@ void FreeThemes(RequestInfo_t *rI){
         free(rI->themes[i].description);
         free(rI->themes[i].lastUpdated);
         free(rI->themes[i].imgLink);
+        free(rI->themes[i].thumbLink);
         if (rI->themes[i].preview)
             SDL_DestroyTexture(rI->themes[i].preview);
     }
@@ -244,9 +245,10 @@ int GenThemeArray(RequestInfo_t *rI){
                 cJSON *like_count = cJSON_GetObjectItemCaseSensitive(theme, "like_count");
                 cJSON *preview = cJSON_GetObjectItemCaseSensitive(theme, "preview");
                 cJSON *original = cJSON_GetObjectItemCaseSensitive(preview, "original");
+                cJSON *thumb = cJSON_GetObjectItemCaseSensitive(preview, "thumb");
 
                 if (cJSON_IsNumber(dl_count) && cJSON_IsNumber(like_count) && cJSON_IsString(last_updated) && (cJSON_IsString(description) || cJSON_IsNull(description)) &&\
-                cJSON_IsString(name) && cJSON_IsString(display_name) && cJSON_IsString(id) && cJSON_IsString(original)){
+                cJSON_IsString(name) && cJSON_IsString(display_name) && cJSON_IsString(id) && cJSON_IsString(original) && cJSON_IsString(thumb)){
                     
                     rI->themes[i].dlCount = dl_count->valueint;
                     rI->themes[i].likeCount = like_count->valueint;
@@ -261,6 +263,7 @@ int GenThemeArray(RequestInfo_t *rI){
                     rI->themes[i].creator = SanitizeString(display_name->valuestring);
                     rI->themes[i].id = CopyTextUtil(id->valuestring);
                     rI->themes[i].imgLink = CopyTextUtil(original->valuestring);
+                    rI->themes[i].thumbLink = CopyTextUtil(thumb->valuestring);
                 }
                 else {
                     return -3;
@@ -289,19 +292,19 @@ ShapeLinker_t *GenListItemList(RequestInfo_t *rI){
     return link;
 }
 
-int AddThemeImagesToDownloadQueue(RequestInfo_t *rI){
+int AddThemeImagesToDownloadQueue(RequestInfo_t *rI, bool thumb){
     if (!rI->curPageItemCount)
         return 0;
         
     rI->tInfo.transfers = calloc(sizeof(Transfer_t), rI->curPageItemCount);
     rI->tInfo.transferer = curl_multi_init();
     rI->tInfo.finished = false;
-    curl_multi_setopt(rI->tInfo.transferer, CURLMOPT_MAXCONNECTS, (long)7);
-    curl_multi_setopt(rI->tInfo.transferer, CURLMOPT_MAX_TOTAL_CONNECTIONS, (long)7);
+    curl_multi_setopt(rI->tInfo.transferer, CURLMOPT_MAXCONNECTS, (long)6);
+    curl_multi_setopt(rI->tInfo.transferer, CURLMOPT_MAX_TOTAL_CONNECTIONS, (long)6);
     curl_multi_setopt(rI->tInfo.transferer, CURLMOPT_PIPELINING, CURLPIPE_MULTIPLEX);
 
     for (int i = 0; i < rI->curPageItemCount; i++){
-            rI->tInfo.transfers[i].transfer = CreateRequest(rI->themes[i].imgLink, &rI->tInfo.transfers[i].data);
+            rI->tInfo.transfers[i].transfer = CreateRequest((thumb) ? rI->themes[i].thumbLink : rI->themes[i].imgLink, &rI->tInfo.transfers[i].data);
             rI->tInfo.transfers[i].index = i;
             curl_easy_setopt(rI->tInfo.transfers[i].transfer, CURLOPT_PRIVATE, &rI->tInfo.transfers[i].index); 
             curl_multi_add_handle(rI->tInfo.transferer, rI->tInfo.transfers[i].transfer);
@@ -329,7 +332,16 @@ int CleanupTransferInfo(RequestInfo_t *rI){
 int HandleDownloadQueue(Context_t *ctx){
     ShapeLinker_t *all = ctx->all;
     RequestInfo_t *rI = ShapeLinkFind(all, DataType)->item;
-    ListGrid_t *gv = ShapeLinkFind(all, ListGridType)->item;
+    ShapeLinker_t *gvLink = ShapeLinkFind(all, ListGridType);
+    ListGrid_t *gv = NULL;
+    Image_t *img;
+
+    if (gvLink != NULL)
+        gv = gvLink->item;
+    else {
+        img = ShapeLinkFind(ShapeLinkFind(all, ImageType)->next, ImageType)->item;
+    }
+
 
     if (rI->tInfo.finished)
         return 0;
@@ -352,10 +364,14 @@ int HandleDownloadQueue(Context_t *ctx){
                 printf("Download of index %d finished!\n", *index);
                 get_request_t *req = &rI->tInfo.transfers[*index].data;
                 rI->themes[*index].preview = LoadImageMemSDL(req->buffer, req->len);
-                ListItem_t *li = ShapeLinkOffset(gv->text, *index)->item;
-                li->leftImg = rI->themes[*index].preview;
-            }
-            
+                if (gvLink != NULL){
+                    ListItem_t *li = ShapeLinkOffset(gv->text, *index)->item;
+                    li->leftImg = rI->themes[*index].preview;
+                }
+                else {
+                    img->texture = rI->themes[*index].preview;
+                }
+            } 
         }
     }
 
