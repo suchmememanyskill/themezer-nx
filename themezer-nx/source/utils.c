@@ -122,7 +122,7 @@ void SetInstallSlot(int pos, char *path){
 		c++;
 	}
 
-	char *out = calloc(1, len);
+	char *out = calloc(1, len + 1);
 	char *temp = out;
 	c = path;
 
