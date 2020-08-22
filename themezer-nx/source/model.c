@@ -4,10 +4,11 @@ const char *targetOptions[] = {
     "Home Menu",
     "Lock Screen",
     "All Apps",
-    "Player Select",
     "Settings",
+    "Player Select",
     "User Page",
-    "News"
+    "News",
+    "All"
 };
 
 const char *sortOptions[] = {

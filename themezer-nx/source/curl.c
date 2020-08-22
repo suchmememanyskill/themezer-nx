@@ -10,8 +10,8 @@ const char *requestTargets[] = {
     "ResidentMenu",
     "Entrance",
     "Flaunch",
-    "Psl",
     "Set",
+    "Psl",
     "MyPage",
     "Notification"
 };
@@ -30,20 +30,26 @@ const char *requestOrders[] = {
 
 char *GenLink(RequestInfo_t *rI){
     char *searchQuoted;
-    if (rI->search[0] != '\0'){
-        searchQuoted = malloc(strlen(rI->search) + 3);
-        sprintf(searchQuoted, "\"%s\"", rI->search);
-    }
-    else {
+    if (rI->search[0] != '\0')
+        searchQuoted = CopyTextArgsUtil("\"%s\"", rI->search);
+    else 
         searchQuoted = CopyTextUtil("null");
-    }
+
+    char *requestTarget;
+    if (rI->target < 0 || rI->target >= 7)
+        requestTarget = CopyTextUtil("null");
+    else 
+        requestTarget = CopyTextArgsUtil("\"%s\"",requestTargets[rI->target]);
     
     static char request[0x400];
-    snprintf(request, 0x400,"https://api.themezer.net/?query=query($target:String,$page:Int,$limit:Int,$sort:String,$order:String,$query:String){themeList(target:$target,page:$page,limit:$limit,sort:$sort,order:$order,query:$query){id,creator{display_name},details{name,description},categories,last_updated,dl_count,like_count,target,preview{original,thumb}}}&variables={\"target\":\"%s\",\"page\":%d,\"limit\":%d,\"sort\":\"%s\",\"order\":\"%s\",\"query\":%s}",\
-    requestTargets[rI->target], rI->page, rI->limit, requestSorts[rI->sort], requestOrders[rI->order], searchQuoted);
+    snprintf(request, 0x400,"https://api.themezer.net/?query=query($target:String,$page:Int,$limit:Int,$sort:String,$order:String,$query:String){themeList(target:$target,page:$page,limit:$limit,sort:$sort,order:$order,query:$query){id,creator{display_name},details{name,description},categories,last_updated,dl_count,like_count,target,preview{original,thumb}}}&variables={\"target\":%s,\"page\":%d,\"limit\":%d,\"sort\":\"%s\",\"order\":\"%s\",\"query\":%s}",\
+    requestTarget, rI->page, rI->limit, requestSorts[rI->sort], requestOrders[rI->order], searchQuoted);
     
     free(searchQuoted);
+    free(requestTarget);
 
+
+    printf("%s\n", request);
     return request;
 }
 
@@ -392,7 +398,7 @@ int HandleDownloadQueue(Context_t *ctx){
 }
 
 void SetDefaultsRequestInfo(RequestInfo_t *rI){
-    rI->target = 0;
+    rI->target = -1;
     rI->limit = 20;
     rI->page = 1;
     rI->sort = 0;
