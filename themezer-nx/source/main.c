@@ -7,10 +7,10 @@
 #include <switch.h>
 #include <sys/stat.h> 
 #include <JAGL.h>
-#include "design.h"
 #include <curl/curl.h>
 #include "libs/cJSON.h"
 #include "utils.h"
+#include "gfx/gfx.h"
 
 #include "curl.h"
 
@@ -40,7 +40,7 @@ int main(int argc, char* argv[])
     InitSDL();
     FontInit();
     romfsInit();
-    InitDesign();
+    InitTextures();
     socketInitializeDefault();
     curl_global_init(CURL_GLOBAL_ALL);
     //nxlinkStdio();
@@ -101,7 +101,7 @@ int main(int argc, char* argv[])
         }
     }
 
-    ExitDesign();
+    DestroyTextures();
     romfsExit();
     FontExit();
     ExitSDL();

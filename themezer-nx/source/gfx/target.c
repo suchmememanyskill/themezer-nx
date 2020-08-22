@@ -1,0 +1,40 @@
+#include "gfx.h"
+
+ShapeLinker_t *CreateSideTargetMenu(){
+    ShapeLinker_t *out = CreateSideBaseMenu("Select a target:");
+
+    ShapeLinker_t *list = NULL;
+    for (int i = 0; i < 7; i++)
+        ShapeLinkAdd(&list, ListItemCreate(COLOR_WHITE, COLOR_WHITE, NULL, targetOptions[i], NULL), ListItemType);
+
+    ShapeLinkAdd(&out, ListViewCreate(POS(0, 50, 400, SCREEN_H - 100), 75, COLOR_CENTERLISTBG, COLOR_CENTERLISTSELECTION, COLOR_CENTERLISTPRESS, LIST_CENTERLEFT, list, exitFunc, NULL, FONT_TEXT[FSize30]), ListViewType);
+
+    ShapeLinkAdd(&out, ButtonCreate(POS(0, SCREEN_H - 50, 400, 50), COLOR_CENTERLISTBG, COLOR_RED, COLOR_WHITE, COLOR_CENTERLISTSELECTION, 0, ButtonStyleBottomStrip, "Exit Themezer-NX", FONT_TEXT[FSize25], exitFunc), ButtonType);
+
+    return out;
+}
+
+int ShowSideTargetMenu(Context_t *ctx){
+    ShapeLinker_t *menu = CreateSideTargetMenu();
+    Context_t menuCtx = MakeMenu(menu, ButtonHandlerBExit, NULL);
+
+    if (menuCtx.selected->type == ListViewType && menuCtx.origin == OriginFunction){
+        ListView_t *lv = menuCtx.selected->item;
+        int selection = lv->highlight;
+        RequestInfo_t *rI = ShapeLinkFind(ctx->all, DataType)->item;
+        if (rI->target != selection){
+            int tempTarget = rI->target;
+            int tempPage = rI->page;
+            SetDefaultsRequestInfo(rI);
+            rI->target = selection;
+            printf("Making request...\n");
+            if (MakeRequestAsCtx(ctx, rI)){
+                rI->target = tempTarget;
+                rI->page = tempPage;
+            }
+        }
+    }
+
+    ShapeLinkDispose(&menu);
+    return (menuCtx.curOffset == 8 && menuCtx.origin == OriginFunction) ? -1 : 0; 
+}

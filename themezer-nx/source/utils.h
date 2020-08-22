@@ -1,11 +1,6 @@
 #pragma once
 #include <switch.h>
 
-typedef struct {
-    char **paths;
-    u8 len;
-} ThemeInstallerArgs_t;
-
 #define NNFREE(x) if (x) { free(x); x = NULL;} // Not null free
 
 char* showKeyboard(char* message, char* initialText, u64 size);

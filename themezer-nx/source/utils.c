@@ -5,6 +5,11 @@
 #include <unistd.h>
 #include <sys/stat.h> 
 
+typedef struct {
+    char **paths;
+    u8 len;
+} ThemeInstallerArgs_t;
+
 const char *possibleThemeInstallerPaths[] = {
 	"/switch/NXThemesInstaller.nro",
 	"/switch/Switch_themes_Installer/NXThemesInstaller.nro"

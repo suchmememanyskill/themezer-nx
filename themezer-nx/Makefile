@@ -43,7 +43,7 @@ APP_VERSION := 1.0.1
 
 TARGET		:=	$(notdir $(CURDIR))
 BUILD		:=	build
-SOURCES		:=	source/GfxLib source/libs source
+SOURCES		:=	source/gfx source/libs source
 DATA		:=	data
 INCLUDES	:=	includes
 ROMFS		:=  romfs

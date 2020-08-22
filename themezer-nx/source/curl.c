@@ -2,11 +2,9 @@
 #include <switch.h>
 #include <curl/curl.h>
 #include "libs/cJSON.h"
-#include "design.h"
+#include "gfx/gfx.h"
 #include <JAGL.h>
 #include "utils.h"
-
-
 
 const char *requestTargets[] = {
     "ResidentMenu",
