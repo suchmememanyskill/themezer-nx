@@ -6,6 +6,8 @@ typedef struct {
     u8 len;
 } ThemeInstallerArgs_t;
 
+#define NNFREE(x) if (x) { free(x); x = NULL;} // Not null free
+
 char* showKeyboard(char* message, char* initialText, u64 size);
 int isStringNullOrEmpty(const char *in);
 char *SanitizeString(const char *name);

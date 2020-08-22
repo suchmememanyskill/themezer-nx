@@ -14,10 +14,12 @@
 
 #include "curl.h"
 
-ShapeLinker_t *errorMenu(){
+ShapeLinker_t *errorMenu(char *message){
     ShapeLinker_t *out = NULL;
     
     ShapeLinkAdd(&out, ButtonCreate(POS(0, 0, SCREEN_W, SCREEN_H), COLOR_BLACK, COLOR_BLACK, COLOR_WHITE, COLOR_BLACK, 0, ButtonStyleFlat, "Could not connect to the themezer server. Press A to exit", FONT_TEXT[FSize35], exitFunc), ButtonType);
+    if (message)
+        ShapeLinkAdd(&out, TextCenteredCreate(POS(0, SCREEN_H - 50, 1280, 50), message, COLOR_RED, FONT_TEXT[FSize30]), TextCenteredType);
 
     return out;
 }
@@ -63,23 +65,30 @@ int main(int argc, char* argv[])
         SetInstallButtonState(1);
     }
 
-    if (!MakeJsonRequest(GenLink(&rI), &rI.response)){
+    char *errMessage = NULL;
+
+    if (!(res = MakeJsonRequest(GenLink(&rI), &rI.response))){
         if (!(res = GenThemeArray(&rI))){
             items = GenListItemList(&rI);
             AddThemeImagesToDownloadQueue(&rI, true);
         }
-        else
+        else {
             printf(CopyTextArgsUtil("Theme array gen failed, %d", res));
+            errMessage = CopyTextArgsUtil("Parsing Json data failed! Code: %d", res);
+        }       
     }
-    else 
+    else {
         printf("Request failed");
-    
-
-    ShapeLinker_t *mainMenu = (items != NULL) ? CreateMainMenu(items, &rI) : errorMenu();
+        errMessage = CopyTextArgsUtil("Site request failed! Code: %d", res);
+    }
+        
+    ShapeLinker_t *mainMenu = (items != NULL) ? CreateMainMenu(items, &rI) : errorMenu(errMessage);
     MakeMenu(mainMenu, NULL, (items != NULL) ? HandleDownloadQueue : NULL);
     ShapeLinkDispose(&mainMenu);
     
     FreeThemes(&rI);
+
+    NNFREE(errMessage);
 
     if (themeInstallerLocation){
         if (CheckIfInstallsQueued()){
