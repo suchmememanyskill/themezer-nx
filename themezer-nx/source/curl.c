@@ -41,12 +41,21 @@ char *GenLink(RequestInfo_t *rI){
     }
     
     static char request[0x400];
-    snprintf(request, 0x400,"https://api.themezer.net/?query=query($target:String,$page:Int,$limit:Int,$sort:String,$order:String,$query:String){themeList(target:$target,page:$page,limit:$limit,sort:$sort,order:$order,query:$query){id,creator{display_name},details{name,description},categories,last_updated,dl_count,like_count,preview{original,thumb}}}&variables={\"target\":\"%s\",\"page\":%d,\"limit\":%d,\"sort\":\"%s\",\"order\":\"%s\",\"query\":%s}",\
+    snprintf(request, 0x400,"https://api.themezer.net/?query=query($target:String,$page:Int,$limit:Int,$sort:String,$order:String,$query:String){themeList(target:$target,page:$page,limit:$limit,sort:$sort,order:$order,query:$query){id,creator{display_name},details{name,description},categories,last_updated,dl_count,like_count,target,preview{original,thumb}}}&variables={\"target\":\"%s\",\"page\":%d,\"limit\":%d,\"sort\":\"%s\",\"order\":\"%s\",\"query\":%s}",\
     requestTargets[rI->target], rI->page, rI->limit, requestSorts[rI->sort], requestOrders[rI->order], searchQuoted);
     
     free(searchQuoted);
 
     return request;
+}
+
+int GetIndexOfStrArr(const char **toSearch, int limit, const char *search){
+    for (int i = 0; i < limit; i++){
+        if (!strcmp(search, toSearch[i]))
+            return i;
+    }
+
+    return 0;
 }
 
 char *GenNxThemeReqLink(char *id){
@@ -195,8 +204,7 @@ void FreeThemes(RequestInfo_t *rI){
             SDL_DestroyTexture(rI->themes[i].preview);
     }
 
-    free(rI->themes);
-    rI->themes = NULL;
+    NNFREE(rI->themes);
 }
 
 int GenThemeArray(RequestInfo_t *rI){
@@ -246,9 +254,10 @@ int GenThemeArray(RequestInfo_t *rI){
                 cJSON *preview = cJSON_GetObjectItemCaseSensitive(theme, "preview");
                 cJSON *original = cJSON_GetObjectItemCaseSensitive(preview, "original");
                 cJSON *thumb = cJSON_GetObjectItemCaseSensitive(preview, "thumb");
+                cJSON *target = cJSON_GetObjectItemCaseSensitive(theme, "target");
 
                 if (cJSON_IsNumber(dl_count) && cJSON_IsNumber(like_count) && cJSON_IsString(last_updated) && (cJSON_IsString(description) || cJSON_IsNull(description)) &&\
-                cJSON_IsString(name) && cJSON_IsString(display_name) && cJSON_IsString(id) && cJSON_IsString(original) && cJSON_IsString(thumb)){
+                cJSON_IsString(name) && cJSON_IsString(display_name) && cJSON_IsString(id) && cJSON_IsString(original) && cJSON_IsString(thumb) && cJSON_IsString(target)){
                     
                     rI->themes[i].dlCount = dl_count->valueint;
                     rI->themes[i].likeCount = like_count->valueint;
@@ -264,6 +273,7 @@ int GenThemeArray(RequestInfo_t *rI){
                     rI->themes[i].id = CopyTextUtil(id->valuestring);
                     rI->themes[i].imgLink = CopyTextUtil(original->valuestring);
                     rI->themes[i].thumbLink = CopyTextUtil(thumb->valuestring);
+                    rI->themes[i].target = GetIndexOfStrArr(requestTargets, 7, target->valuestring);
                 }
                 else {
                     return -3;

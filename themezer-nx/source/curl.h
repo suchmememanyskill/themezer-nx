@@ -19,6 +19,7 @@ typedef struct {
     char *thumbLink;
     int dlCount;
     int likeCount;
+    int target;
     SDL_Texture *preview;
 } ThemeInfo_t;
 

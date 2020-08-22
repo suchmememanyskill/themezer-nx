@@ -129,7 +129,7 @@ int DownloadThemeButton(Context_t *ctx){
 
     RenderShapeLinkList(render);
 
-    char *path = GetThemePath(target->creator, target->name, targetOptions[rI->target]);
+    char *path = GetThemePath(target->creator, target->name, targetOptions[target->target]);
     int res = DownloadThemeFromID(target->id, path);
 
     if (res){
@@ -158,9 +158,9 @@ int InstallThemeButton(Context_t *ctx){
         RequestInfo_t *rI = ShapeLinkFind(ctx->all, DataType)->item;
         ThemeInfo_t *target = rI->themes;
         
-        char *path = GetThemePath(target->creator, target->name, targetOptions[rI->target]);
+        char *path = GetThemePath(target->creator, target->name, targetOptions[target->target]);
 
-        SetInstallSlot(rI->target, path);
+        SetInstallSlot(target->target, path);
 
         MakeMenu(out, ButtonHandlerBExit, NULL);
     }
@@ -193,7 +193,7 @@ ShapeLinker_t *CreateSelectMenu(RequestInfo_t *rI){
     ShapeLinkAdd(&out, ButtonCreate(POS(915, 110, SCREEN_W - 980, 60), COLOR_INSTBTN, COLOR_INSTBTNPRS, COLOR_WHITE, COLOR_INSTBTNSEL, (InstallButtonState) ? 0 : BUTTON_DISABLED, ButtonStyleFlat, "Install Theme", FONT_TEXT[FSize30], InstallThemeButton), ButtonType);
     ShapeLinkAdd(&out, ButtonCreate(POS(915, 180, SCREEN_W - 980, 60), COLOR_DLBTN, COLOR_DLBTNPRS, COLOR_WHITE, COLOR_DLBTNSEL, 0, ButtonStyleFlat, "Download Theme", FONT_TEXT[FSize30], DownloadThemeButton), ButtonType);
 
-    char *info = CopyTextArgsUtil("Creator: %s\n\nLast Updated: %s\n\nDownload Count: %d\nLike Count: %d\nID: t%s", target->creator, target->lastUpdated, target->dlCount, target->likeCount, target->id);
+    char *info = CopyTextArgsUtil("Creator: %s\n\nLast Updated: %s\n\nDownload Count: %d\nLike Count: %d\nID: t%s\nTarget: %s", target->creator, target->lastUpdated, target->dlCount, target->likeCount, target->id, targetOptions[target->target]);
     char *desc = CopyTextArgsUtil("Description: %s", target->description);
 
     ShapeLinkAdd(&out, TextCenteredCreate(POS(920, 250, SCREEN_W - 990, 420), info, COLOR_WHITE, FONT_TEXT[FSize23]), TextBoxType);
@@ -226,7 +226,6 @@ int ThemeSelect(Context_t *ctx){
     RequestInfo_t customRI = {0};
     customRI.curPageItemCount = 1;
     customRI.themes = target;
-    customRI.target = rI->target;
 
     if (update)
         AddThemeImagesToDownloadQueue(&customRI, false);
