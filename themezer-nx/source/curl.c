@@ -46,7 +46,7 @@ char *GenLink(RequestInfo_t *rI){
         snprintf(request, 0x400,"https://api.themezer.net/?query=query($target:String,$page:Int,$limit:Int,$sort:String,$order:String,$query:String){themeList(target:$target,page:$page,limit:$limit,sort:$sort,order:$order,query:$query){id,creator{display_name},details{name,description},categories,last_updated,dl_count,like_count,target,preview{original,thumb}}}&variables={\"target\":%s,\"page\":%d,\"limit\":%d,\"sort\":\"%s\",\"order\":\"%s\",\"query\":%s}",\
         requestTarget, rI->page, rI->limit, requestSorts[rI->sort], requestOrders[rI->order], searchQuoted);
     else if (rI->target == 8)
-        snprintf(request, 0x400, "https://api.themezer.net/?query=query($page:Int,$limit:Int,$sort:String,$order:String,$query:String){packList(page:$page,limit:$limit,sort:$sort,order:$order,query:$query){id,creator{display_name},details{name,description},categories,themes{id,creator{display_name},details{name,description},categories,last_updated,dl_count,like_count,target,preview{original,thumb}}}}&variables={\"page\":%d,\"limit\":%d,\"sort\":\"%s\",\"order\":\"%s\",\"query\":%s}",\
+        snprintf(request, 0x400, "https://api.themezer.net/?query=query($page:Int,$limit:Int,$sort:String,$order:String,$query:String){packList(page:$page,limit:$limit,sort:$sort,order:$order,query:$query){id,creator{display_name},details{name,description},categories,last_updated,dl_count,like_count,themes{id,creator{display_name},details{name,description},categories,last_updated,dl_count,like_count,target,preview{original,thumb}}}}&variables={\"page\":%d,\"limit\":%d,\"sort\":\"%s\",\"order\":\"%s\",\"query\":%s}",\
         rI->page, rI->limit, requestSorts[rI->sort], requestOrders[rI->order], searchQuoted);
     
     free(searchQuoted);
