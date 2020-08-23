@@ -4,7 +4,7 @@ ShapeLinker_t *CreateSideTargetMenu(){
     ShapeLinker_t *out = CreateSideBaseMenu("Select a target:");
 
     ShapeLinker_t *list = NULL;
-    for (int i = 0; i < 8; i++)
+    for (int i = 0; i < 9; i++)
         ShapeLinkAdd(&list, ListItemCreate(COLOR_WHITE, COLOR_WHITE, NULL, targetOptions[i], NULL), ListItemType);
 
     ShapeLinkAdd(&out, ListViewCreate(POS(0, 50, 400, SCREEN_H - 100), 60, COLOR_CENTERLISTBG, COLOR_CENTERLISTSELECTION, COLOR_CENTERLISTPRESS, LIST_CENTERLEFT, list, exitFunc, NULL, FONT_TEXT[FSize30]), ListViewType);
@@ -27,6 +27,10 @@ int ShowSideTargetMenu(Context_t *ctx){
             int tempPage = rI->page;
             SetDefaultsRequestInfo(rI);
             rI->target = selection;
+            if (selection == 8){
+                rI->maxDls = 3;
+                rI->limit = 8;
+            }
             printf("Making request...\n");
             if (MakeRequestAsCtx(ctx, rI)){
                 rI->target = tempTarget;

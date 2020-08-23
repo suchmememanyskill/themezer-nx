@@ -42,13 +42,17 @@ char *GenLink(RequestInfo_t *rI){
         requestTarget = CopyTextArgsUtil("\"%s\"",requestTargets[rI->target]);
     
     static char request[0x400];
-    snprintf(request, 0x400,"https://api.themezer.net/?query=query($target:String,$page:Int,$limit:Int,$sort:String,$order:String,$query:String){themeList(target:$target,page:$page,limit:$limit,sort:$sort,order:$order,query:$query){id,creator{display_name},details{name,description},categories,last_updated,dl_count,like_count,target,preview{original,thumb}}}&variables={\"target\":%s,\"page\":%d,\"limit\":%d,\"sort\":\"%s\",\"order\":\"%s\",\"query\":%s}",\
-    requestTarget, rI->page, rI->limit, requestSorts[rI->sort], requestOrders[rI->order], searchQuoted);
+    if (rI->target <= 7)
+        snprintf(request, 0x400,"https://api.themezer.net/?query=query($target:String,$page:Int,$limit:Int,$sort:String,$order:String,$query:String){themeList(target:$target,page:$page,limit:$limit,sort:$sort,order:$order,query:$query){id,creator{display_name},details{name,description},categories,last_updated,dl_count,like_count,target,preview{original,thumb}}}&variables={\"target\":%s,\"page\":%d,\"limit\":%d,\"sort\":\"%s\",\"order\":\"%s\",\"query\":%s}",\
+        requestTarget, rI->page, rI->limit, requestSorts[rI->sort], requestOrders[rI->order], searchQuoted);
+    else if (rI->target == 8)
+        snprintf(request, 0x400, "https://api.themezer.net/?query=query($page:Int,$limit:Int,$sort:String,$order:String,$query:String){packList(page:$page,limit:$limit,sort:$sort,order:$order,query:$query){id,creator{display_name},details{name,description},categories,themes{id,creator{display_name},details{name,description},categories,last_updated,dl_count,like_count,target,preview{original,thumb}}}}&variables={\"page\":%d,\"limit\":%d,\"sort\":\"%s\",\"order\":\"%s\",\"query\":%s}",\
+        rI->page, rI->limit, requestSorts[rI->sort], requestOrders[rI->order], searchQuoted);
     
     free(searchQuoted);
     free(requestTarget);
 
-    printf("%s\n", request);
+    printf("Request: %s\n\n", request);
     return request;
 }
 
@@ -67,7 +71,7 @@ char *GenNxThemeReqLink(char *id){
     return request;
 }
 
-#define CHUNK_SIZE 32768
+#define CHUNK_SIZE 8192
 
 static size_t write_callback(char *ptr, size_t size, size_t nmemb, void *userdata)
 {
@@ -119,7 +123,7 @@ int MakeJsonRequest(char *url, cJSON **response){
             *response = cJSON_Parse(req.buffer);
         }
 
-        printf(req.buffer);
+        printf("Buffer: %s\n", req.buffer);
         free(req.buffer);
     }
 
@@ -198,18 +202,131 @@ void FreeThemes(RequestInfo_t *rI){
         return;
 
     for (int i = 0; i < rI->curPageItemCount; i++){
-        free(rI->themes[i].id);
-        free(rI->themes[i].creator);
-        free(rI->themes[i].name);
-        free(rI->themes[i].description);
-        free(rI->themes[i].lastUpdated);
-        free(rI->themes[i].imgLink);
-        free(rI->themes[i].thumbLink);
-        if (rI->themes[i].preview)
+        NNFREE(rI->themes[i].id);
+        NNFREE(rI->themes[i].creator);
+        NNFREE(rI->themes[i].name);
+        NNFREE(rI->themes[i].description);
+        NNFREE(rI->themes[i].lastUpdated);
+        NNFREE(rI->themes[i].imgLink);
+        NNFREE(rI->themes[i].thumbLink);
+        if (rI->themes[i].preview && rI->packs == NULL)
             SDL_DestroyTexture(rI->themes[i].preview);
+        
+        if (rI->packs != NULL){
+            free(rI->packs[i].creator);
+            free(rI->packs[i].name);
+            for (int j = 0; j < rI->packs[i].themeCount; j++){
+                free(rI->packs[i].themes[j].id);
+                free(rI->packs[i].themes[j].creator);
+                free(rI->packs[i].themes[j].name);
+                free(rI->packs[i].themes[j].description);
+                free(rI->packs[i].themes[j].lastUpdated);
+                free(rI->packs[i].themes[j].imgLink);
+                free(rI->packs[i].themes[j].thumbLink);
+                if  (rI->packs[i].themes[j].preview)
+                    SDL_DestroyTexture(rI->packs[i].themes[j].preview);
+            }
+            free(rI->packs[i].themes);
+        }
     }
 
     NNFREE(rI->themes);
+    NNFREE(rI->packs);
+}
+
+int ParseThemeList(ThemeInfo_t **storage, int size, cJSON *themesList){
+    *storage = calloc(sizeof(ThemeInfo_t), size);
+    ThemeInfo_t *themes = *storage;
+
+    cJSON *theme = NULL;
+    int i = 0;
+    
+    cJSON_ArrayForEach(theme, themesList){
+        cJSON *id = cJSON_GetObjectItemCaseSensitive(theme, "id");
+        cJSON *creator = cJSON_GetObjectItemCaseSensitive(theme, "creator");
+        cJSON *display_name = cJSON_GetObjectItemCaseSensitive(creator, "display_name");
+        cJSON *details = cJSON_GetObjectItemCaseSensitive(theme, "details");
+        cJSON *name = cJSON_GetObjectItemCaseSensitive(details, "name");
+        cJSON *description = cJSON_GetObjectItemCaseSensitive(details, "description");
+        cJSON *last_updated = cJSON_GetObjectItemCaseSensitive(theme, "last_updated");
+        cJSON *dl_count = cJSON_GetObjectItemCaseSensitive(theme, "dl_count");
+        cJSON *like_count = cJSON_GetObjectItemCaseSensitive(theme, "like_count");
+        cJSON *preview = cJSON_GetObjectItemCaseSensitive(theme, "preview");
+        cJSON *original = cJSON_GetObjectItemCaseSensitive(preview, "original");
+        cJSON *thumb = cJSON_GetObjectItemCaseSensitive(preview, "thumb");
+        cJSON *target = cJSON_GetObjectItemCaseSensitive(theme, "target");
+
+        if (cJSON_IsNumber(dl_count) && cJSON_IsNumber(like_count) && cJSON_IsString(last_updated) && (cJSON_IsString(description) || cJSON_IsNull(description)) &&\
+        cJSON_IsString(name) && cJSON_IsString(display_name) && cJSON_IsString(id) && cJSON_IsString(original) && cJSON_IsString(thumb) && cJSON_IsString(target)){
+                    
+            themes[i].dlCount = dl_count->valueint;
+            themes[i].likeCount = like_count->valueint;
+                    
+            themes[i].lastUpdated = CopyTextUtil(last_updated->valuestring);
+            if (cJSON_IsNull(description))
+                themes[i].description = CopyTextUtil("no description");
+            else
+                themes[i].description = CopyTextUtil(description->valuestring);
+                    
+            themes[i].name = SanitizeString(name->valuestring);
+            themes[i].creator = SanitizeString(display_name->valuestring);
+            themes[i].id = CopyTextUtil(id->valuestring);
+            themes[i].imgLink = CopyTextUtil(original->valuestring);
+            themes[i].thumbLink = CopyTextUtil(thumb->valuestring);
+            themes[i].target = GetIndexOfStrArr(requestTargets, 7, target->valuestring);
+        }
+        else {
+            return 1;
+        }
+
+        i++;
+    }
+
+    return 0;
+}
+
+int ParsePackList(PackInfo_t **storage, int size, cJSON *packList){
+    *storage = calloc(sizeof(PackInfo_t), size);
+    PackInfo_t *packs = *storage;
+
+    cJSON *pack = NULL;
+    int i = 0;
+
+    cJSON_ArrayForEach(pack, packList){
+        cJSON *creator = cJSON_GetObjectItemCaseSensitive(pack, "creator");
+        cJSON *display_name = cJSON_GetObjectItemCaseSensitive(creator, "display_name");
+        cJSON *details = cJSON_GetObjectItemCaseSensitive(pack, "details");
+        cJSON *name = cJSON_GetObjectItemCaseSensitive(details, "name");
+        cJSON *themes = cJSON_GetObjectItemCaseSensitive(pack, "themes");
+
+        if (cJSON_IsString(name) && cJSON_IsString(display_name) && cJSON_IsArray(themes)){
+            
+            packs[i].creator = SanitizeString(display_name->valuestring);
+            packs[i].name = SanitizeString(name->valuestring);
+            int arraySize = cJSON_GetArraySize(themes);
+            printf("Index: %d, size: %d\n", i, arraySize);
+            packs[i].themeCount = arraySize;
+            if (ParseThemeList(&packs[i].themes, arraySize, themes))
+                return 2;
+        }
+        else {
+            return 1;
+        }
+
+        i++;
+    }
+
+    return 0;
+}
+
+void FillThemesWithPacks(RequestInfo_t *rI){
+    rI->themes = calloc(sizeof(ThemeInfo_t), rI->curPageItemCount);
+    for (int i = 0; i < rI->curPageItemCount; i++){
+        rI->themes[i].name = CopyTextUtil(rI->packs[i].name);
+        rI->themes[i].creator = CopyTextUtil(rI->packs[i].creator);
+        rI->themes[i].thumbLink = CopyTextUtil(rI->packs[i].themes[0].thumbLink);
+        rI->themes[i].imgLink = CopyTextUtil(rI->packs[i].themes[0].imgLink);
+    }
 }
 
 int GenThemeArray(RequestInfo_t *rI){
@@ -238,57 +355,32 @@ int GenThemeArray(RequestInfo_t *rI){
         if (rI->itemCount <= 0)
             return 0;
 
-        rI->themes = calloc(sizeof(ThemeInfo_t), rI->curPageItemCount);
+        if (rI->target != 8){
+            cJSON *themesList = cJSON_GetObjectItemCaseSensitive(data, "themeList");
 
-        cJSON *themesList = cJSON_GetObjectItemCaseSensitive(data, "themeList");
+            if (themesList){
+                if (ParseThemeList(&rI->themes, rI->curPageItemCount, themesList))
+                    return -3;
 
-        if (themesList){
-            cJSON *theme = NULL;
-            int i = 0;
-
-            cJSON_ArrayForEach(theme, themesList){
-                cJSON *id = cJSON_GetObjectItemCaseSensitive(theme, "id");
-                cJSON *creator = cJSON_GetObjectItemCaseSensitive(theme, "creator");
-                cJSON *display_name = cJSON_GetObjectItemCaseSensitive(creator, "display_name");
-                cJSON *details = cJSON_GetObjectItemCaseSensitive(theme, "details");
-                cJSON *name = cJSON_GetObjectItemCaseSensitive(details, "name");
-                cJSON *description = cJSON_GetObjectItemCaseSensitive(details, "description");
-                cJSON *last_updated = cJSON_GetObjectItemCaseSensitive(theme, "last_updated");
-                cJSON *dl_count = cJSON_GetObjectItemCaseSensitive(theme, "dl_count");
-                cJSON *like_count = cJSON_GetObjectItemCaseSensitive(theme, "like_count");
-                cJSON *preview = cJSON_GetObjectItemCaseSensitive(theme, "preview");
-                cJSON *original = cJSON_GetObjectItemCaseSensitive(preview, "original");
-                cJSON *thumb = cJSON_GetObjectItemCaseSensitive(preview, "thumb");
-                cJSON *target = cJSON_GetObjectItemCaseSensitive(theme, "target");
-
-                if (cJSON_IsNumber(dl_count) && cJSON_IsNumber(like_count) && cJSON_IsString(last_updated) && (cJSON_IsString(description) || cJSON_IsNull(description)) &&\
-                cJSON_IsString(name) && cJSON_IsString(display_name) && cJSON_IsString(id) && cJSON_IsString(original) && cJSON_IsString(thumb) && cJSON_IsString(target)){
-                    
-                    rI->themes[i].dlCount = dl_count->valueint;
-                    rI->themes[i].likeCount = like_count->valueint;
-                    
-                    rI->themes[i].lastUpdated = CopyTextUtil(last_updated->valuestring);
-                    if (cJSON_IsNull(description))
-                        rI->themes[i].description = CopyTextUtil("no description");
-                    else
-                        rI->themes[i].description = CopyTextUtil(description->valuestring);
-                    
-                    rI->themes[i].name = SanitizeString(name->valuestring);
-                    rI->themes[i].creator = SanitizeString(display_name->valuestring);
-                    rI->themes[i].id = CopyTextUtil(id->valuestring);
-                    rI->themes[i].imgLink = CopyTextUtil(original->valuestring);
-                    rI->themes[i].thumbLink = CopyTextUtil(thumb->valuestring);
-                    rI->themes[i].target = GetIndexOfStrArr(requestTargets, 7, target->valuestring);
-                }
-                else {
+                res = 0;
+                cJSON_Delete(rI->response);
+            }
+        }
+        else {
+            cJSON *packList = cJSON_GetObjectItemCaseSensitive(data, "packList");
+            
+            if (packList){
+                if (ParsePackList(&rI->packs, rI->curPageItemCount, packList)){
+                    printf("Pack parser failed!");
                     return -3;
                 }
+                    
 
-                i++;
+                FillThemesWithPacks(rI);
+
+                res = 0;
+                cJSON_Delete(rI->response);
             }
-
-            res = 0;
-            cJSON_Delete(rI->response);
         }
     }
 
@@ -299,6 +391,8 @@ int GenThemeArray(RequestInfo_t *rI){
 
 ShapeLinker_t *GenListItemList(RequestInfo_t *rI){
     ShapeLinker_t *link = NULL;
+
+    printf("Gen: ArraySize: %d", rI->curPageItemCount);
 
     for (int i = 0; i < rI->curPageItemCount; i++){
         ShapeLinkAdd(&link, ListItemCreate(COLOR(255,255,255,255), COLOR(170, 170, 170, 255), (rI->themes[i].preview) ? rI->themes[i].preview : loadingScreen, rI->themes[i].name, rI->themes[i].creator), ListItemType);
@@ -314,8 +408,8 @@ int AddThemeImagesToDownloadQueue(RequestInfo_t *rI, bool thumb){
     rI->tInfo.transfers = calloc(sizeof(Transfer_t), rI->curPageItemCount);
     rI->tInfo.transferer = curl_multi_init();
     rI->tInfo.finished = false;
-    curl_multi_setopt(rI->tInfo.transferer, CURLMOPT_MAXCONNECTS, (long)6);
-    curl_multi_setopt(rI->tInfo.transferer, CURLMOPT_MAX_TOTAL_CONNECTIONS, (long)6);
+    curl_multi_setopt(rI->tInfo.transferer, CURLMOPT_MAXCONNECTS, (long)rI->maxDls);
+    curl_multi_setopt(rI->tInfo.transferer, CURLMOPT_MAX_TOTAL_CONNECTIONS, (long)rI->maxDls);
     curl_multi_setopt(rI->tInfo.transferer, CURLMOPT_PIPELINING, CURLPIPE_MULTIPLEX);
 
     for (int i = 0; i < rI->curPageItemCount; i++){
@@ -405,4 +499,5 @@ void SetDefaultsRequestInfo(RequestInfo_t *rI){
     rI->sort = 0;
     rI->order = 0;
     rI->search = CopyTextUtil("");
+    rI->maxDls = 6;
 }

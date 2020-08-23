@@ -118,9 +118,12 @@ int ThemeSelect(Context_t *ctx){
     ListGrid_t *gv = ShapeLinkFind(all, ListGridType)->item;
     RequestInfo_t *rI = ShapeLinkFind(all, DataType)->item;
     ThemeInfo_t *target = &rI->themes[gv->highlight];
-
+    
     if (target->preview == NULL)
         return 0;
+
+    if (rI->target == 8)
+        return ShowPackDetails(ctx);
 
     int w, h, update = 1;
     SDL_QueryTexture(target->preview, NULL, NULL, &w, &h);

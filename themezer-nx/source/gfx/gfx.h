@@ -22,6 +22,9 @@ int GetInstallButtonState();
 void SetInstallButtonState(int state);
 int ShowCurlError(Context_t *ctx);
 
+// packdetails.c
+int ShowPackDetails(Context_t *ctx);
+
 // target.c
 int ShowSideTargetMenu(Context_t *ctx);
 

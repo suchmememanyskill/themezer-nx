@@ -32,6 +32,19 @@ typedef struct {
     SDL_Texture *preview;
 } ThemeInfo_t;
 
+typedef struct { // We are not going to display like half of these
+    //char *id;
+    char *creator;
+    char *name;
+    //char *description;
+    //char *lastUpdated;
+    //int dlCount;
+    //int likeCount;
+    int themeCount;
+    int isDlDone;
+    ThemeInfo_t *themes;
+} PackInfo_t;
+
 typedef struct {
     CURL *transfer;
     get_request_t data;
@@ -46,6 +59,7 @@ typedef struct {
 } TransferInfo_t;
 
 typedef struct {
+    int maxDls;
     int target;
     int limit;
     int page;
@@ -58,5 +72,6 @@ typedef struct {
     cJSON *response;
     ThemeInfo_t *themes;
     TransferInfo_t tInfo;
+    PackInfo_t *packs;
 } RequestInfo_t;
 

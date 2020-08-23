@@ -8,7 +8,8 @@ const char *targetOptions[] = {
     "Player Select",
     "User Page",
     "News",
-    "All"
+    "All",
+    "Packs"
 };
 
 const char *sortOptions[] = {

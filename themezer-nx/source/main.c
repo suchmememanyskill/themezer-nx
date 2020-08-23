@@ -48,7 +48,7 @@ int main(int argc, char* argv[])
     curl_global_init(CURL_GLOBAL_ALL);
     //nxlinkStdio();
 
-    RequestInfo_t rI = {0, 0, 0, 0, 0, "", 0, 0, 0, NULL, NULL, {NULL, 0, NULL, true}};
+    RequestInfo_t rI = {0, 0, 0, 0, 0, 0, "", 0, 0, 0, NULL, NULL, {NULL, 0, NULL, true}, NULL};
     SetDefaultsRequestInfo(&rI);
     ShapeLinker_t *items = NULL;
 
