@@ -4,6 +4,8 @@
 #include <curl/curl.h>
 #include "model.h"
 
+extern char cURLErrBuff[CURL_ERROR_SIZE];
+
 int GetThemesList(char *url, char *data, cJSON **response);
 ShapeLinker_t *GenListItemsFromJson(cJSON *json);
 int MakeJsonRequest(char *url, cJSON **response);

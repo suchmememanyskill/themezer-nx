@@ -102,7 +102,7 @@ ShapeLinker_t *CreateSelectMenu(RequestInfo_t *rI){
     char *desc = CopyTextArgsUtil("Description: %s", target->description);
 
     ShapeLinkAdd(&out, TextCenteredCreate(POS(920, 250, SCREEN_W - 990, 420), info, COLOR_WHITE, FONT_TEXT[FSize23]), TextBoxType);
-    ShapeLinkAdd(&out, TextCenteredCreate(POS(60, 593, SCREEN_W - 120, 80), desc, COLOR_WHITE, FONT_TEXT[FSize23]), TextBoxType);
+    ShapeLinkAdd(&out, TextCenteredCreate(POS(60, 588, SCREEN_W - 120, 82), desc, COLOR_WHITE, FONT_TEXT[FSize23]), TextBoxType);
 
     free(info);
     free(desc);

@@ -48,7 +48,6 @@ char *GenLink(RequestInfo_t *rI){
     free(searchQuoted);
     free(requestTarget);
 
-
     printf("%s\n", request);
     return request;
 }
@@ -87,6 +86,8 @@ static size_t write_callback(char *ptr, size_t size, size_t nmemb, void *userdat
     return realsize;
 }
 
+char cURLErrBuff[CURL_ERROR_SIZE] = "";
+
 CURL *CreateRequest(char *url, get_request_t *data){
     CURL *curl = NULL;
 
@@ -101,6 +102,7 @@ CURL *CreateRequest(char *url, get_request_t *data){
 
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, data);
+        curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, cURLErrBuff);
     }
 
     return curl;
@@ -111,7 +113,6 @@ int MakeJsonRequest(char *url, cJSON **response){
 
     int res;
     CURL *curl = CreateRequest(url, &req);
-
 
     if (!(res = curl_easy_perform(curl))){
         if (response != NULL){
@@ -398,7 +399,7 @@ int HandleDownloadQueue(Context_t *ctx){
 }
 
 void SetDefaultsRequestInfo(RequestInfo_t *rI){
-    rI->target = -1;
+    rI->target = 7;
     rI->limit = 20;
     rI->page = 1;
     rI->sort = 0;

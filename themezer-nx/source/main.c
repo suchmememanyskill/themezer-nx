@@ -14,12 +14,15 @@
 
 #include "curl.h"
 
-ShapeLinker_t *errorMenu(char *message){
+ShapeLinker_t *errorMenu(char *message, int errLoc){
     ShapeLinker_t *out = NULL;
     
-    ShapeLinkAdd(&out, ButtonCreate(POS(0, 0, SCREEN_W, SCREEN_H), COLOR_BLACK, COLOR_BLACK, COLOR_WHITE, COLOR_BLACK, 0, ButtonStyleFlat, "Could not connect to the themezer server. Press A to exit", FONT_TEXT[FSize35], exitFunc), ButtonType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(0, 50, SCREEN_W, SCREEN_H - 50), COLOR_CENTERLISTBG, COLOR_CENTERLISTPRESS, COLOR_WHITE, COLOR_CENTERLISTBG, 0, ButtonStyleFlat, "Could not connect to the themezer server. Press A to exit", FONT_TEXT[FSize35], exitFunc), ButtonType);
     if (message)
         ShapeLinkAdd(&out, TextCenteredCreate(POS(0, SCREEN_H - 50, 1280, 50), message, COLOR_RED, FONT_TEXT[FSize30]), TextCenteredType);
+
+    bool ShowErrMenu = (errLoc == 1 && cURLErrBuff[0] != '\0');
+    ShapeLinkAdd(&out, ButtonCreate(POS(0, 0, SCREEN_W, 50), COLOR_TOPBAR, COLOR_BTN4, COLOR_WHITE, COLOR_TOPBARSELECTION, (ShowErrMenu) ? 0 : BUTTON_DISABLED, ButtonStyleTopStrip, (ShowErrMenu) ? "Details" : "Details not available...", FONT_TEXT[FSize30], ShowCurlError), ButtonType);
 
     return out;
 }
@@ -66,6 +69,7 @@ int main(int argc, char* argv[])
     }
 
     char *errMessage = NULL;
+    int errLoc = 0;
 
     if (!(res = MakeJsonRequest(GenLink(&rI), &rI.response))){
         if (!(res = GenThemeArray(&rI))){
@@ -74,15 +78,16 @@ int main(int argc, char* argv[])
         }
         else {
             printf(CopyTextArgsUtil("Theme array gen failed, %d", res));
-            errMessage = CopyTextArgsUtil("Parsing Json data failed! Code: %d", res);
+            errMessage = CopyTextArgsUtil("Parsing Json data failed! Error Code: %d", res);
         }       
     }
     else {
         printf("Request failed");
-        errMessage = CopyTextArgsUtil("Site request failed! Code: %d", res);
+        errMessage = CopyTextArgsUtil("Site request failed! Error Code: %d", res);
+        errLoc = 1;
     }
         
-    ShapeLinker_t *mainMenu = (items != NULL) ? CreateMainMenu(items, &rI) : errorMenu(errMessage);
+    ShapeLinker_t *mainMenu = (items != NULL) ? CreateMainMenu(items, &rI) : errorMenu(errMessage, errLoc);
     MakeMenu(mainMenu, NULL, (items != NULL) ? HandleDownloadQueue : NULL);
     ShapeLinkDispose(&mainMenu);
     

@@ -20,6 +20,7 @@ int ButtonHandlerBExit(Context_t *ctx);
 int exitFunc(Context_t *ctx);
 int GetInstallButtonState();
 void SetInstallButtonState(int state);
+int ShowCurlError(Context_t *ctx);
 
 // target.c
 int ShowSideTargetMenu(Context_t *ctx);

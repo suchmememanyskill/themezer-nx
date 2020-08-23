@@ -56,6 +56,38 @@ ShapeLinker_t *CreateBaseMessagePopup(char *title, char *message){ // Other code
     return out;
 }
 
+int ShowCurlError(Context_t *ctx){
+    ShapeLinker_t *menu = NULL;
+
+    ShapeLinkAdd(&menu, ButtonCreate(POS(0, 0, SCREEN_W, SCREEN_H), COLOR_CENTERLISTBG, COLOR_CENTERLISTBG, COLOR_WHITE, COLOR_CENTERLISTBG, 0, ButtonStyleFlat, NULL, NULL, exitFunc), ButtonType);
+    ShapeLinkAdd(&menu, RectangleCreate(POS(0, 0, SCREEN_W, 50), COLOR_TOPBAR, 1), RectangleType);
+    ShapeLinkAdd(&menu, TextCenteredCreate(POS(0, 0, SCREEN_W, 50), "Back", COLOR_WHITE, FONT_TEXT[FSize30]), TextCenteredType);
+
+    ShapeLinkAdd(&menu, TextCenteredCreate(POS(10, 60, SCREEN_W - 20, SCREEN_H - 70), cURLErrBuff, COLOR_WHITE, FONT_TEXT[FSize25]), TextBoxType);
+
+    MakeMenu(menu, ButtonHandlerBExit, NULL);
+    ShapeLinkDispose(&menu);
+
+    return 0;
+}
+
+int ShowConnErrMenu(int res){
+    char *message = CopyTextArgsUtil("Something went wrong when connecting to the themezer server! Error Code: %d", res);
+    ShapeLinker_t *menu = CreateBaseMessagePopup("Connection Error!", message);
+    free(message);
+
+    bool showDetails = (cURLErrBuff[0] != '\0');
+
+    ShapeLinkAdd(&menu, ButtonCreate(POS(250, 470, (showDetails) ? 390 : 780, 50), COLOR_CENTERLISTBG, COLOR_RED, COLOR_WHITE, COLOR_CENTERLISTSELECTION, 0, ButtonStyleBottomStrip, "Alright", FONT_TEXT[FSize28], exitFunc), ButtonType);
+    if (showDetails)
+        ShapeLinkAdd(&menu, ButtonCreate(POS(640, 470, 390, 50), COLOR_CENTERLISTBG, COLOR_CENTERLISTPRESS, COLOR_WHITE, COLOR_CENTERLISTSELECTION, 0, ButtonStyleBottomStrip, "Show Details", FONT_TEXT[FSize28], ShowCurlError), ButtonType);
+
+    MakeMenu(menu, ButtonHandlerBExit, NULL);
+    ShapeLinkDispose(&menu);
+
+    return 0;
+}
+
 int MakeRequestAsCtx(Context_t *ctx, RequestInfo_t *rI){
     ShapeLinker_t *items = NULL;
     int res = -1;
@@ -63,7 +95,7 @@ int MakeRequestAsCtx(Context_t *ctx, RequestInfo_t *rI){
     CleanupTransferInfo(rI);
 
     printf("Making JSON request...\n");
-    if (!MakeJsonRequest(GenLink(rI), &rI->response)){
+    if (!(res = MakeJsonRequest(GenLink(rI), &rI->response))){
         printf("JSON request got! parsing...\n");
         if (!(res = GenThemeArray(rI))){
             printf("JSON data parsed!\n");
@@ -83,6 +115,9 @@ int MakeRequestAsCtx(Context_t *ctx, RequestInfo_t *rI){
             pageText->text.text = CopyTextArgsUtil("Page %d/%d", rI->page, rI->pageCount);
             
         }
+    }
+    else {
+        ShowConnErrMenu(res);
     }
 
     printf("Res: %d\n", res);
