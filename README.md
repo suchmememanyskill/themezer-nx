@@ -1,6 +1,11 @@
 # themezer-nx
 A switch theme downloader that pulls from https://themezer.net/, and installs themes using the NXThemesInstaller
 
+[![Build Themezer-nx](https://github.com/suchmememanyskill/themezer-nx/workflows/Build%20Themezer-nx/badge.svg)](https://github.com/suchmememanyskill/themezer-nx/actions)
+[![dlCount](https://img.shields.io/github/downloads/suchmememanyskill/themezer-nx/total?color=blue)](https://github.com/suchmememanyskill/themezer-nx/releases)
+[![version](https://img.shields.io/github/v/release/suchmememanyskill/themezer-nx)](https://github.com/suchmememanyskill/themezer-nx/releases)
+
+
 ![screenshot](screenshot.jpg)
 
 ## How to use
