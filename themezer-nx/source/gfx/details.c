@@ -1,4 +1,5 @@
 #include "gfx.h"
+#include <unistd.h>
 
 int EnlargePreviewImage(Context_t *ctx){
     RequestInfo_t *rI = ShapeLinkFind(ctx->all, DataType)->item;
@@ -58,13 +59,16 @@ int InstallThemeButton(Context_t *ctx){
     ShapeLinkAdd(&out, ButtonCreate(POS(0, 0, SCREEN_W, SCREEN_H), COLOR(0,0,0,0), COLOR(0,0,0,0), COLOR(0,0,0,0), COLOR(0,0,0,0), 0, ButtonStyleFlat, NULL, NULL, exitFunc), ButtonType);
     ShapeLinkAdd(&out, TextCenteredCreate(POS(250, 470, 780, 50), "Got it!", COLOR_WHITE, FONT_TEXT[FSize28]), TextCenteredType);
 
-    int res = DownloadThemeButton(ctx);
-    if (!res){
-        RequestInfo_t *rI = ShapeLinkFind(ctx->all, DataType)->item;
-        ThemeInfo_t *target = rI->themes;
-        
-        char *path = GetThemePath(target->creator, target->name, targetOptions[target->target]);
+    RequestInfo_t *rI = ShapeLinkFind(ctx->all, DataType)->item;
+    ThemeInfo_t *target = rI->themes;
+    char *path = GetThemePath(target->creator, target->name, targetOptions[target->target]);
 
+    int res = !(access(path, F_OK) != -1);
+
+    if (res)
+        res = DownloadThemeButton(ctx);
+    
+    if (!res){
         SetInstallSlot(target->target, path);
 
         MakeMenu(out, ButtonHandlerBExit, NULL);
