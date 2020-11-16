@@ -41,6 +41,15 @@ int PrevPageButton(Context_t *ctx){
     return 0;
 }
 
+int ButtonHandlerMainMenu(Context_t *ctx){
+    if (ctx->kHeld & KEY_R)
+        return NextPageButton(ctx);
+    if (ctx->kHeld & KEY_L)
+        return PrevPageButton(ctx);
+
+    return 0;
+}
+
 ShapeLinker_t *CreateMainMenu(ShapeLinker_t *listItems, RequestInfo_t *rI) { 
     ShapeLinker_t *out = NULL;
 

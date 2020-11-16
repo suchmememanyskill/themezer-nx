@@ -50,6 +50,9 @@ int main(int argc, char* argv[])
 
     RequestInfo_t rI = {0, 0, 0, 0, 0, 0, "", 0, 0, 0, NULL, NULL, {NULL, 0, NULL, true}, NULL};
     SetDefaultsRequestInfo(&rI);
+    rI.maxDls = 3;
+    rI.limit = 8;
+    rI.target = 8;
     ShapeLinker_t *items = NULL;
 
     AllocateInstalls(7);
@@ -88,7 +91,7 @@ int main(int argc, char* argv[])
     }
         
     ShapeLinker_t *mainMenu = (items != NULL) ? CreateMainMenu(items, &rI) : errorMenu(errMessage, errLoc);
-    MakeMenu(mainMenu, NULL, (items != NULL) ? HandleDownloadQueue : NULL);
+    MakeMenu(mainMenu, ButtonHandlerMainMenu, (items != NULL) ? HandleDownloadQueue : NULL);
     ShapeLinkDispose(&mainMenu);
     
     FreeThemes(&rI);

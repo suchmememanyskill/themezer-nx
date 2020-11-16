@@ -38,4 +38,5 @@ int ShowSideQueueMenu(Context_t *ctx);
 int ThemeSelect(Context_t *ctx);
 
 // mainmenu.c
+int ButtonHandlerMainMenu(Context_t *ctx);
 ShapeLinker_t *CreateMainMenu(ShapeLinker_t *listItems, RequestInfo_t *rI);
