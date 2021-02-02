@@ -46,6 +46,7 @@ int main(int argc, char* argv[])
     InitTextures();
     socketInitializeDefault();
     curl_global_init(CURL_GLOBAL_ALL);
+    InitHid();
     //nxlinkStdio();
 
     RequestInfo_t rI = {0, 0, 0, 0, 0, 0, "", 0, 0, 0, NULL, NULL, {NULL, 0, NULL, true}, NULL};
