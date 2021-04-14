@@ -151,6 +151,29 @@ int MakeDownloadRequest(char *url, char *path){
     return res;
 }
 
+int hasError(cJSON *root){
+    cJSON *err = cJSON_GetObjectItemCaseSensitive(root, "errors");
+
+    if (err){
+        cJSON *errItem = cJSON_GetArrayItem(err, 0);
+        if (errItem){
+            cJSON *messageItem = cJSON_GetObjectItemCaseSensitive(errItem, "message");
+            char *message = cJSON_GetStringValue(messageItem);
+            
+            if (message){
+                ShapeLinker_t *menu = CreateBaseMessagePopup("Error during request", message);
+                ShapeLinkAdd(&menu, ButtonCreate(POS(250, 470, 780, 50), COLOR_CENTERLISTBG, COLOR_CENTERLISTPRESS, COLOR_WHITE, COLOR_CENTERLISTSELECTION, 0, ButtonStyleBottomStrip, "Ok", FONT_TEXT[FSize28], exitFunc), ButtonType);
+                MakeMenu(menu, ButtonHandlerBExit, NULL);
+                ShapeLinkDispose(&menu);
+            }
+        }
+
+        return 1;
+    }
+
+    return 0;
+}
+
 char *GetThemeDownloadURL(char *id){
     cJSON *list;
     int res;
@@ -160,6 +183,9 @@ char *GetThemeDownloadURL(char *id){
         printf("theme url parsing failed! code: %d\n", res);
         return NULL;
     }
+
+    if (hasError(list))
+        return out;
 
     cJSON *data = cJSON_GetObjectItemCaseSensitive(list, "data");
     if (data){
@@ -334,6 +360,9 @@ int GenThemeArray(RequestInfo_t *rI){
         return -1;
 
     int res = -1;
+
+    if (hasError(rI->response))
+        return -4;
 
     cJSON *data = cJSON_GetObjectItemCaseSensitive(rI->response, "data");
     if (data){
