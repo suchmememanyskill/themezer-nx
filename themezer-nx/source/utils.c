@@ -12,11 +12,12 @@ typedef struct {
 
 const char *possibleThemeInstallerPaths[] = {
 	"/switch/NXThemesInstaller.nro",
+	"/switch/NXThemesInstaller/NXThemesInstaller.nro",
 	"/switch/Switch_themes_Installer/NXThemesInstaller.nro"
 };
 
 const char* GetThemeInstallerPath(){
-	for (int i = 0; i < 2; i++){
+	for (int i = 0; i < 3; i++){
 		if (access(possibleThemeInstallerPaths[i], F_OK) != -1){
 			return possibleThemeInstallerPaths[i];
 		}
