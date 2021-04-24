@@ -162,7 +162,7 @@ int hasError(cJSON *root){
             
             if (message){
                 ShapeLinker_t *menu = CreateBaseMessagePopup("Error during request", message);
-                ShapeLinkAdd(&menu, ButtonCreate(POS(250, 470, 780, 50), COLOR_CENTERLISTBG, COLOR_CENTERLISTPRESS, COLOR_WHITE, COLOR_CENTERLISTSELECTION, 0, ButtonStyleBottomStrip, "Ok", FONT_TEXT[FSize28], exitFunc), ButtonType);
+                ShapeLinkAdd(&menu, ButtonCreate(POS(250, 470, 780, 50), COLOR_MAINBG, COLOR_CURSORPRESS, COLOR_WHITE, COLOR_CURSOR, 0, ButtonStyleBottomStrip, "Ok", FONT_TEXT[FSize28], exitFunc), ButtonType);
                 MakeMenu(menu, ButtonHandlerBExit, NULL);
                 ShapeLinkDispose(&menu);
             }

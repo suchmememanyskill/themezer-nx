@@ -8,8 +8,8 @@ int HandleQueueList(Context_t *ctx){
         ShapeLinker_t *menu = CreateBaseMessagePopup("Remove Queued item?", message);
         free(message);
 
-        ShapeLinkAdd(&menu, ButtonCreate(POS(640, 470, 390, 50), COLOR_CENTERLISTBG, COLOR_CENTERLISTPRESS, COLOR_WHITE, COLOR_CENTERLISTSELECTION, 0, ButtonStyleBottomStrip, "No", FONT_TEXT[FSize28], exitFunc), ButtonType);
-        ShapeLinkAdd(&menu, ButtonCreate(POS(250, 470, 390, 50), COLOR_CENTERLISTBG, COLOR_RED, COLOR_WHITE, COLOR_CENTERLISTSELECTION, 0, ButtonStyleBottomStrip, "Yes", FONT_TEXT[FSize28], exitFunc), ButtonType);
+        ShapeLinkAdd(&menu, ButtonCreate(POS(640, 470, 390, 50), COLOR_MAINBG, COLOR_CURSORPRESS, COLOR_WHITE, COLOR_CURSOR, 0, ButtonStyleBottomStrip, "No", FONT_TEXT[FSize28], exitFunc), ButtonType);
+        ShapeLinkAdd(&menu, ButtonCreate(POS(250, 470, 390, 50), COLOR_MAINBG, COLOR_RED, COLOR_WHITE, COLOR_CURSOR, 0, ButtonStyleBottomStrip, "Yes", FONT_TEXT[FSize28], exitFunc), ButtonType);
 
         Context_t menuCtx = MakeMenu(menu, ButtonHandlerBExit, NULL);
         ShapeLinkDispose(&menu);
@@ -42,7 +42,7 @@ ShapeLinker_t *CreateSideQueueMenu(){
         free(t);
     }
 
-    ShapeLinkAdd(&out, ListViewCreate(POS(0, 50, 400, SCREEN_H - 100), 75, COLOR_CENTERLISTBG, COLOR_CENTERLISTSELECTION, COLOR_CENTERLISTPRESS, LIST_CENTERLEFT, text, HandleQueueList, NULL, FONT_TEXT[FSize28]), ListViewType);
+    ShapeLinkAdd(&out, ListViewCreate(POS(0, 50, 400, SCREEN_H - 100), 75, COLOR_MAINBG, COLOR_CURSOR, COLOR_CURSORPRESS, COLOR_SCROLLBAR, COLOR_SCROLLBARTHUMB, LIST_CENTERLEFT, text, HandleQueueList, NULL, FONT_TEXT[FSize28]), ListViewType);
 
     return out;
 }

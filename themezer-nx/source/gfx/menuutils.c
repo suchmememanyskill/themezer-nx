@@ -31,11 +31,11 @@ ShapeLinker_t *CreateSideBaseMenu(char *menuName){ // Count: 7
 
     SDL_Texture *screenshot = ScreenshotToTexture();
     ShapeLinkAdd(&out, ImageCreate(screenshot, POS(0, 0, SCREEN_W, SCREEN_H), IMAGE_CLEANUPTEX), ImageType);
-    ShapeLinkAdd(&out, RectangleCreate(POS(0, 50, 400, SCREEN_H - 50), COLOR_CENTERLISTBG, 1), RectangleType);
+    ShapeLinkAdd(&out, RectangleCreate(POS(0, 50, 400, SCREEN_H - 50), COLOR_MAINBG, 1), RectangleType);
 
     ShapeLinkAdd(&out, RectangleCreate(POS(0, 0, 350, 50), COLOR_TOPBAR, 1), RectangleType);
     ShapeLinkAdd(&out, TextCenteredCreate(POS(0, 0, 400, 50), menuName, COLOR_WHITE, FONT_TEXT[FSize23]), TextCenteredType);
-    ShapeLinkAdd(&out, ButtonCreate(POS(350, 0, 50, 50), COLOR_TOPBAR, COLOR_RED, COLOR_WHITE, COLOR_TOPBARSELECTION, 0, ButtonStyleFlat, NULL, NULL, exitFunc), ButtonType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(350, 0, 50, 50), COLOR_TOPBAR, COLOR_RED, COLOR_WHITE, COLOR_TOPBARCURSOR, 0, ButtonStyleFlat, NULL, NULL, exitFunc), ButtonType);
     ShapeLinkAdd(&out, ImageCreate(XIcon, POS(350, 0, 50, 50), 0), ImageType);
     ShapeLinkAdd(&out, ButtonCreate(POS(400, 0, SCREEN_W - 400, SCREEN_H), COLOR(0,0,0,170), COLOR(0,0,0,170), COLOR(0,0,0,170), COLOR(0,0,0,170), BUTTON_NOJOYSEL, ButtonStyleFlat, NULL, NULL, exitFunc), ButtonType);
 
@@ -50,7 +50,7 @@ ShapeLinker_t *CreateBaseMessagePopup(char *title, char *message){ // Other code
     ShapeLinkAdd(&out, RectangleCreate(POS(0, 0, SCREEN_W, SCREEN_H), COLOR(0, 0, 0, 170), 1), RectangleType);
     ShapeLinkAdd(&out, RectangleCreate(POS(250, 200, SCREEN_W - 500, 50), COLOR_TOPBAR, 1), RectangleType);
     ShapeLinkAdd(&out, TextCenteredCreate(POS(260, 200, 0, 50), title, COLOR_WHITE, FONT_TEXT[FSize25]), TextCenteredType);
-    ShapeLinkAdd(&out, RectangleCreate(POS(250, 250, SCREEN_W - 500, 220), COLOR_CENTERLISTBG, 1), RectangleType);
+    ShapeLinkAdd(&out, RectangleCreate(POS(250, 250, SCREEN_W - 500, 220), COLOR_MAINBG, 1), RectangleType);
     ShapeLinkAdd(&out, TextCenteredCreate(POS(260, 260, SCREEN_W - 520, 200), message, COLOR_WHITE, FONT_TEXT[FSize28]), TextBoxType);
 
     return out;
@@ -59,7 +59,7 @@ ShapeLinker_t *CreateBaseMessagePopup(char *title, char *message){ // Other code
 int ShowCurlError(Context_t *ctx){
     ShapeLinker_t *menu = NULL;
 
-    ShapeLinkAdd(&menu, ButtonCreate(POS(0, 0, SCREEN_W, SCREEN_H), COLOR_CENTERLISTBG, COLOR_CENTERLISTBG, COLOR_WHITE, COLOR_CENTERLISTBG, 0, ButtonStyleFlat, NULL, NULL, exitFunc), ButtonType);
+    ShapeLinkAdd(&menu, ButtonCreate(POS(0, 0, SCREEN_W, SCREEN_H), COLOR_MAINBG, COLOR_MAINBG, COLOR_WHITE, COLOR_MAINBG, 0, ButtonStyleFlat, NULL, NULL, exitFunc), ButtonType);
     ShapeLinkAdd(&menu, RectangleCreate(POS(0, 0, SCREEN_W, 50), COLOR_TOPBAR, 1), RectangleType);
     ShapeLinkAdd(&menu, TextCenteredCreate(POS(0, 0, SCREEN_W, 50), "Back", COLOR_WHITE, FONT_TEXT[FSize30]), TextCenteredType);
 
@@ -78,9 +78,9 @@ int ShowConnErrMenu(int res){
 
     bool showDetails = (cURLErrBuff[0] != '\0');
 
-    ShapeLinkAdd(&menu, ButtonCreate(POS(250, 470, (showDetails) ? 390 : 780, 50), COLOR_CENTERLISTBG, COLOR_RED, COLOR_WHITE, COLOR_CENTERLISTSELECTION, 0, ButtonStyleBottomStrip, "Alright", FONT_TEXT[FSize28], exitFunc), ButtonType);
+    ShapeLinkAdd(&menu, ButtonCreate(POS(250, 470, (showDetails) ? 390 : 780, 50), COLOR_MAINBG, COLOR_RED, COLOR_WHITE, COLOR_CURSOR, 0, ButtonStyleBottomStrip, "Alright", FONT_TEXT[FSize28], exitFunc), ButtonType);
     if (showDetails)
-        ShapeLinkAdd(&menu, ButtonCreate(POS(640, 470, 390, 50), COLOR_CENTERLISTBG, COLOR_CENTERLISTPRESS, COLOR_WHITE, COLOR_CENTERLISTSELECTION, 0, ButtonStyleBottomStrip, "Show Details", FONT_TEXT[FSize28], ShowCurlError), ButtonType);
+        ShapeLinkAdd(&menu, ButtonCreate(POS(640, 470, 390, 50), COLOR_MAINBG, COLOR_CURSORPRESS, COLOR_WHITE, COLOR_CURSOR, 0, ButtonStyleBottomStrip, "Show Details", FONT_TEXT[FSize28], ShowCurlError), ButtonType);
 
     MakeMenu(menu, ButtonHandlerBExit, NULL);
     ShapeLinkDispose(&menu);

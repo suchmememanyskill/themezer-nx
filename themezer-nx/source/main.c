@@ -17,12 +17,12 @@
 ShapeLinker_t *errorMenu(char *message, int errLoc){
     ShapeLinker_t *out = NULL;
     
-    ShapeLinkAdd(&out, ButtonCreate(POS(0, 50, SCREEN_W, SCREEN_H - 50), COLOR_CENTERLISTBG, COLOR_CENTERLISTPRESS, COLOR_WHITE, COLOR_CENTERLISTBG, 0, ButtonStyleFlat, "Could not connect to the themezer server. Press A to exit", FONT_TEXT[FSize35], exitFunc), ButtonType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(0, 50, SCREEN_W, SCREEN_H - 50), COLOR_MAINBG, COLOR_CURSORPRESS, COLOR_WHITE, COLOR_MAINBG, 0, ButtonStyleFlat, "Could not connect to the themezer server. Press A to exit", FONT_TEXT[FSize35], exitFunc), ButtonType);
     if (message)
         ShapeLinkAdd(&out, TextCenteredCreate(POS(0, SCREEN_H - 50, 1280, 50), message, COLOR_RED, FONT_TEXT[FSize30]), TextCenteredType);
 
     bool ShowErrMenu = (errLoc == 1 && cURLErrBuff[0] != '\0');
-    ShapeLinkAdd(&out, ButtonCreate(POS(0, 0, SCREEN_W, 50), COLOR_TOPBAR, COLOR_BTN4, COLOR_WHITE, COLOR_TOPBARSELECTION, (ShowErrMenu) ? 0 : BUTTON_DISABLED, ButtonStyleTopStrip, (ShowErrMenu) ? "Details" : "Details not available...", FONT_TEXT[FSize30], ShowCurlError), ButtonType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(0, 0, SCREEN_W, 50), COLOR_TOPBAR, COLOR_BTN4, COLOR_WHITE, COLOR_TOPBARCURSOR, (ShowErrMenu) ? 0 : BUTTON_DISABLED, ButtonStyleTopStrip, (ShowErrMenu) ? "Details" : "Details not available...", FONT_TEXT[FSize30], ShowCurlError), ButtonType);
 
     return out;
 }
@@ -30,7 +30,7 @@ ShapeLinker_t *errorMenu(char *message, int errLoc){
 ShapeLinker_t *WarnMenu(){
     ShapeLinker_t *warnMenu = CreateBaseMessagePopup("Warning!", "The theme installer could not be found!\nMake sure the theme installer is in the following location:\n\nsd:/switch/NXThemesInstaller.nro");
 
-    ShapeLinkAdd(&warnMenu, RectangleCreate(POS(250, 470, 780, 50), COLOR_CENTERLISTSELECTION, 1), RectangleType);
+    ShapeLinkAdd(&warnMenu, RectangleCreate(POS(250, 470, 780, 50), COLOR_CURSOR, 1), RectangleType);
     ShapeLinkAdd(&warnMenu, ButtonCreate(POS(0, 0, SCREEN_W, SCREEN_H), COLOR(0,0,0,0), COLOR(0,0,0,0), COLOR(0,0,0,0), COLOR(0,0,0,0), 0, ButtonStyleFlat, NULL, NULL, exitFunc), ButtonType);
     ShapeLinkAdd(&warnMenu, TextCenteredCreate(POS(250, 470, 780, 50), "Alright", COLOR_WHITE, FONT_TEXT[FSize28]), TextCenteredType);
 
