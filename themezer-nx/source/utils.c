@@ -4,6 +4,7 @@
 #include <JAGL.h>
 #include <unistd.h>
 #include <sys/stat.h> 
+#include "model.h"
 
 typedef struct {
     char **paths;
@@ -17,7 +18,7 @@ const char *possibleThemeInstallerPaths[] = {
 };
 
 const char* GetThemeInstallerPath(){
-	for (int i = 0; i < 3; i++){
+	for (int i = 0; i < ARRAY_SIZE(possibleThemeInstallerPaths); i++){
 		if (access(possibleThemeInstallerPaths[i], F_OK) != -1){
 			return possibleThemeInstallerPaths[i];
 		}
@@ -105,7 +106,19 @@ void AllocateInstalls(int len){
 	QueuedInstalls.paths = calloc(sizeof(char*), len);
 }
 
+int GetInstallSlotOffset(char *name){
+	for (int i = 0; i < 7; i++){
+		if (!strcmp(targetOptions[i], name))
+			return i;
+	}
+
+	return -1;
+}
+
 int CheckIfInstallSlotIsFree(int pos){
+	if (pos < 0)
+		return 0;
+
 	return (QueuedInstalls.paths[pos] == NULL);
 }
 

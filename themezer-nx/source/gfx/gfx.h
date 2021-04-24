@@ -12,7 +12,7 @@ extern SDL_Texture *menuIcon, *searchIcon, *setIcon, *arrowLIcon, *arrowRIcon, *
 void InitTextures();
 void DestroyTextures();
 
-// utils.c
+// menuutils.c
 int MakeRequestAsCtx(Context_t *ctx, RequestInfo_t *rI);
 ShapeLinker_t *CreateBaseMessagePopup(char *title, char *message);
 ShapeLinker_t *CreateSideBaseMenu(char *menuName);

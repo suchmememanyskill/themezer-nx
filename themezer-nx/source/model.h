@@ -75,3 +75,4 @@ typedef struct {
     PackInfo_t *packs;
 } RequestInfo_t;
 
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof(*(x)))

@@ -2,9 +2,14 @@
 
 int HandleQueueList(Context_t *ctx){
     ListView_t *lv = ShapeLinkFind(ctx->all, ListViewType)->item;
+    ListItem_t *selected = ShapeLinkOffset(lv->text, lv->highlight)->item;
+    int installSlotOffset = GetInstallSlotOffset(selected->leftText);
 
-    if (!CheckIfInstallSlotIsFree(lv->highlight)){
-        char *message = CopyTextArgsUtil("Are you sure you want to remove the %s's queued install?", targetOptions[lv->highlight]);
+    if (installSlotOffset < 0)
+        return 0;
+
+    if (!CheckIfInstallSlotIsFree(installSlotOffset)){
+        char *message = CopyTextArgsUtil("Are you sure you want to remove the %s's queued install?", targetOptions[installSlotOffset]);
         ShapeLinker_t *menu = CreateBaseMessagePopup("Remove Queued item?", message);
         free(message);
 
@@ -15,17 +20,13 @@ int HandleQueueList(Context_t *ctx){
         ShapeLinkDispose(&menu);
 
         if (menuCtx.curOffset == 7 && menuCtx.origin == OriginFunction){
-            SetInstallSlot(lv->highlight, NULL);
-            ShapeLinkDispose(&lv->text);
+            SetInstallSlot(installSlotOffset, NULL);
+            ShapeLinkDel(&lv->text, lv->highlight);
+            lv->highlight = 0;
 
-            ShapeLinker_t *text = NULL;
-            for (int i = 0; i < 7; i++){
-                char *t = CopyTextArgsUtil("%s: %s", targetOptions[i], (CheckIfInstallSlotIsFree(i)) ? "Not Queued" : "Queued");
-                ShapeLinkAdd(&text, ListItemCreate((CheckIfInstallSlotIsFree(i)) ? COLOR_WHITE : COLOR_GREEN, COLOR_WHITE, NULL, t, NULL), ListItemType);
-                free(t);
+            if (lv->text == NULL){
+                return -1;
             }
-
-            lv->text = text;
         }
     }
 
@@ -36,13 +37,19 @@ ShapeLinker_t *CreateSideQueueMenu(){
     ShapeLinker_t *out = CreateSideBaseMenu("Currently queued installs:");
 
     ShapeLinker_t *text = NULL;
+    int hasAtLeastOne = 0;
+
     for (int i = 0; i < 7; i++){
-        char *t = CopyTextArgsUtil("%s: %s", targetOptions[i], (CheckIfInstallSlotIsFree(i)) ? "Not Queued" : "Queued");
-        ShapeLinkAdd(&text, ListItemCreate((CheckIfInstallSlotIsFree(i)) ? COLOR_WHITE : COLOR_GREEN, COLOR_WHITE, NULL, t, NULL), ListItemType);
-        free(t);
+        if (!CheckIfInstallSlotIsFree(i)){
+            hasAtLeastOne = 1;
+            char *t = CopyTextUtil(targetOptions[i]);
+            ShapeLinkAdd(&text, ListItemCreate(COLOR_GREEN, COLOR_WHITE, NULL, t, NULL), ListItemType);
+            free(t);
+        }
     }
 
-    ShapeLinkAdd(&out, ListViewCreate(POS(0, 50, 400, SCREEN_H - 100), 75, COLOR_CENTERLISTBG, COLOR_CENTERLISTSELECTION, COLOR_CENTERLISTPRESS, LIST_CENTERLEFT, text, HandleQueueList, NULL, FONT_TEXT[FSize28]), ListViewType);
+    if (hasAtLeastOne)
+        ShapeLinkAdd(&out, ListViewCreate(POS(0, 50, 400, SCREEN_H - 100), 75, COLOR_CENTERLISTBG, COLOR_CENTERLISTSELECTION, COLOR_CENTERLISTPRESS, COLOR_CENTERLISTSELECTION, COLOR_CENTERLISTPRESS, LIST_CENTERLEFT, text, HandleQueueList, NULL, FONT_TEXT[FSize28]), ListViewType);
 
     return out;
 }
