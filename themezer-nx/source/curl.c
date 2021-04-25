@@ -43,10 +43,10 @@ char *GenLink(RequestInfo_t *rI){
     
     static char request[0x400];
     if (rI->target <= 7)
-        snprintf(request, 0x400,"https://api.themezer.net/?query=query($target:String,$page:Int,$limit:Int,$sort:String,$order:String,$query:String){themeList(target:$target,page:$page,limit:$limit,sort:$sort,order:$order,query:$query){id,creator{display_name},details{name,description},categories,last_updated,dl_count,like_count,target,preview{original,thumb}}}&variables={\"target\":%s,\"page\":%d,\"limit\":%d,\"sort\":\"%s\",\"order\":\"%s\",\"query\":%s}",\
+        snprintf(request, 0x400,"https://api.themezer.net/?query=query($target:String,$page:Int,$limit:Int,$sort:String,$order:String,$query:String){themeList(target:$target,page:$page,limit:$limit,sort:$sort,order:$order,query:$query){id,creator{display_name},details{name,description},last_updated,dl_count,like_count,target,preview{original,thumb}}}&variables={\"target\":%s,\"page\":%d,\"limit\":%d,\"sort\":\"%s\",\"order\":\"%s\",\"query\":%s}",\
         requestTarget, rI->page, rI->limit, requestSorts[rI->sort], requestOrders[rI->order], searchQuoted);
     else if (rI->target == 8)
-        snprintf(request, 0x400, "https://api.themezer.net/?query=query($page:Int,$limit:Int,$sort:String,$order:String,$query:String){packList(page:$page,limit:$limit,sort:$sort,order:$order,query:$query){id,creator{display_name},details{name,description},categories,last_updated,dl_count,like_count,themes{id,creator{display_name},details{name,description},categories,last_updated,dl_count,like_count,target,preview{original,thumb}}}}&variables={\"page\":%d,\"limit\":%d,\"sort\":\"%s\",\"order\":\"%s\",\"query\":%s}",\
+        snprintf(request, 0x400, "https://api.themezer.net/?query=query($page:Int,$limit:Int,$sort:String,$order:String,$query:String){packList(page:$page,limit:$limit,sort:$sort,order:$order,query:$query){id,creator{display_name},details{name,description},last_updated,dl_count,like_count,themes{id,creator{display_name},details{name,description},last_updated,dl_count,like_count,target,preview{original,thumb}}}}&variables={\"page\":%d,\"limit\":%d,\"sort\":\"%s\",\"order\":\"%s\",\"query\":%s}",\
         rI->page, rI->limit, requestSorts[rI->sort], requestOrders[rI->order], searchQuoted);
     
     free(searchQuoted);
@@ -162,7 +162,7 @@ int hasError(cJSON *root){
             
             if (message){
                 ShapeLinker_t *menu = CreateBaseMessagePopup("Error during request", message);
-                ShapeLinkAdd(&menu, ButtonCreate(POS(250, 470, 780, 50), COLOR_CENTERLISTBG, COLOR_CENTERLISTPRESS, COLOR_WHITE, COLOR_CENTERLISTSELECTION, 0, ButtonStyleBottomStrip, "Ok", FONT_TEXT[FSize28], exitFunc), ButtonType);
+                ShapeLinkAdd(&menu, ButtonCreate(POS(250, 470, 780, 50), COLOR_MAINBG, COLOR_CURSORPRESS, COLOR_WHITE, COLOR_CURSOR, 0, ButtonStyleBottomStrip, "Ok", FONT_TEXT[FSize28], exitFunc), ButtonType);
                 MakeMenu(menu, ButtonHandlerBExit, NULL);
                 ShapeLinkDispose(&menu);
             }
@@ -289,9 +289,7 @@ int ParseThemeList(ThemeInfo_t **storage, int size, cJSON *themesList){
             themes[i].likeCount = like_count->valueint;
                     
             themes[i].lastUpdated = CopyTextUtil(last_updated->valuestring);
-            if (cJSON_IsNull(description))
-                themes[i].description = CopyTextUtil("no description");
-            else
+            if (!cJSON_IsNull(description))
                 themes[i].description = CopyTextUtil(description->valuestring);
                     
             themes[i].name = SanitizeString(name->valuestring);

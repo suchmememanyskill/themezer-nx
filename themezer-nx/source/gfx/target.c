@@ -1,15 +1,22 @@
 #include "gfx.h"
 
 ShapeLinker_t *CreateSideTargetMenu(RequestInfo_t *rI){
-    ShapeLinker_t *out = CreateSideBaseMenu("Select a target:");
+    ShapeLinker_t *out = CreateSideBaseMenu("Type");
 
     ShapeLinker_t *list = NULL;
-    for (int i = 0; i < 9; i++)
-        ShapeLinkAdd(&list, ListItemCreate((rI->target == i) ? COLOR_GREEN : COLOR_WHITE, COLOR_WHITE, NULL, targetOptions[i], NULL), ListItemType);
+    for (int i = 0; i < 9; i++) {
+        if (rI->target == i) {
+            SetActiveColorTexture(targetIcons[i]);
+        } else {
+            SetInactiveColorTexture(targetIcons[i]);
+        }
+        ShapeLinkAdd(&list, ListItemCreate((rI->target == i) ? COLOR_FILTERACTIVE : COLOR_WHITE, COLOR_WHITE, targetIcons[i], targetOptions[i], NULL), ListItemType);
+    }
 
-    ShapeLinkAdd(&out, ListViewCreate(POS(0, 50, 400, SCREEN_H - 100), 60, COLOR_CENTERLISTBG, COLOR_CENTERLISTSELECTION, COLOR_CENTERLISTPRESS, COLOR_CENTERLISTSELECTION, COLOR_CENTERLISTPRESS, LIST_CENTERLEFT, list, exitFunc, NULL, FONT_TEXT[FSize30]), ListViewType);
+    ShapeLinkAdd(&out, ListViewCreate(POS(0, 50, 400, SCREEN_H - 100), 60, COLOR_MAINBG, COLOR_CURSOR, COLOR_CURSORPRESS, COLOR_SCROLLBAR, COLOR_SCROLLBARTHUMB, LIST_CENTERLEFT, list, exitFunc, NULL, FONT_TEXT[FSize30]), ListViewType);
 
-    ShapeLinkAdd(&out, ButtonCreate(POS(0, SCREEN_H - 50, 400, 50), COLOR_CENTERLISTBG, COLOR_RED, COLOR_WHITE, COLOR_CENTERLISTSELECTION, 0, ButtonStyleBottomStrip, "Exit Themezer-NX", FONT_TEXT[FSize25], exitFunc), ButtonType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(0, SCREEN_H - 50, 400, 50), COLOR_MAINBG, COLOR_RED, COLOR_WHITE, COLOR_CURSOR, 0, ButtonStyleBottomStrip, "Exit Themezer-NX", FONT_TEXT[FSize25], exitFunc), ButtonType);
+    ShapeLinkAdd(&out, GlyphCreate(376, SCREEN_H - 48, BUTTON_PLUS, COLOR_WHITE, FONT_BTN[FSize20]), GlyphType);
 
     return out;
 }
@@ -29,7 +36,7 @@ int ShowSideTargetMenu(Context_t *ctx){
             rI->target = selection;
             if (selection == 8){
                 rI->maxDls = 3;
-                rI->limit = 8;
+                rI->limit = 12;
             }
             printf("Making request...\n");
             if (MakeRequestAsCtx(ctx, rI)){

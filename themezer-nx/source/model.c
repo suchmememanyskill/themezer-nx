@@ -13,14 +13,13 @@ const char *targetOptions[] = {
 };
 
 const char *sortOptions[] = {
-    "Last updated",
+    "Last Updated",
     "Downloads",
     "Likes",
-    "Creation date"
+    "Creation Date"
 };
 
 const char *orderOptions[] = {
     "Descending",
     "Ascending"
 };
-
