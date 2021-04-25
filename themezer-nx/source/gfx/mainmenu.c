@@ -88,14 +88,14 @@ ShapeLinker_t *CreateMainMenu(ShapeLinker_t *listItems, RequestInfo_t *rI) {
     //ShapeLinkAdd(&out, ImageCreate(sortIcon, POS(390, 0, 60, 60), 0), ImageType);
 
     // LeftArrow
-    ShapeLinkAdd(&out, ButtonCreate(POS(800, 0, 120, 60), COLOR_TOPBARBUTTONS, rI->page == 1 ? COLOR_TOPBARBUTTONS : COLOR_BTNPAGINATION, COLOR_WHITE, COLOR_CURSOR, 0, ButtonStyleBottomStrip, NULL, NULL, PrevPageButton), ButtonType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(800, 0, 120, 60), COLOR_TOPBARBUTTONS, rI->page > 1 ? COLOR_BTNPAGINATION : COLOR_TOPBARBUTTONS, COLOR_WHITE, COLOR_CURSOR, 0, ButtonStyleBottomStrip, NULL, NULL, PrevPageButton), ButtonType);
     ShapeLinkAdd(&out, ImageCreate(arrowLIcon, POS(830, 0, 60, 60), 0), ImageType);
 
     // Easter egg
     ShapeLinkAdd(&out, ButtonCreate(POS(386, 0, 170, 60), COLOR_TOPBARBUTTONS, COLOR_TOPBARBUTTONS, COLOR_WHITE, COLOR_TOPBARBUTTONS, BUTTON_NOJOYSEL, ButtonStyleFlat, NULL, NULL, lennify), ButtonType);
 
     // RightArrow
-    ShapeLinkAdd(&out, ButtonCreate(POS(1160, 0, 120, 60), COLOR_TOPBARBUTTONS, rI->page == rI->pageCount ? COLOR_TOPBARBUTTONS : COLOR_BTNPAGINATION, COLOR_WHITE, COLOR_CURSOR, 0, ButtonStyleBottomStrip, NULL, NULL, NextPageButton), ButtonType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(1160, 0, 120, 60), COLOR_TOPBARBUTTONS, rI->page < rI->pageCount ? COLOR_BTNPAGINATION : COLOR_TOPBARBUTTONS, COLOR_WHITE, COLOR_CURSOR, 0, ButtonStyleBottomStrip, NULL, NULL, NextPageButton), ButtonType);
     ShapeLinkAdd(&out, ImageCreate(arrowRIcon, POS(1190, 0, 60, 60), 0), ImageType);
 
     ShapeLinkAdd(&out, ListGridCreate(POS(0, 60, SCREEN_W, SCREEN_H - 60), 4, 260, COLOR_MAINBG, COLOR_CARDCURSOR, COLOR_CARDCURSORPRESS, COLOR_SCROLLBAR, COLOR_SCROLLBARTHUMB, (listItems) ? GRID_NOSIDEESC : LIST_DISABLED, listItems, ThemeSelect, NULL, FONT_TEXT[FSize23]), ListGridType);
@@ -110,8 +110,19 @@ ShapeLinker_t *CreateMainMenu(ShapeLinker_t *listItems, RequestInfo_t *rI) {
     ShapeLinkAdd(&out, GlyphCreate(97, 2, BUTTON_X, COLOR_WHITE, FONT_BTN[FSize20]), GlyphType);
     ShapeLinkAdd(&out, GlyphCreate(217, 2, BUTTON_Y, COLOR_WHITE, FONT_BTN[FSize20]), GlyphType);
     ShapeLinkAdd(&out, GlyphCreate(337, 2, BUTTON_MINUS, COLOR_WHITE, FONT_BTN[FSize20]), GlyphType);
-    ShapeLinkAdd(&out, GlyphCreate(804, 2, BUTTON_L, COLOR_WHITE, FONT_BTN[FSize20]), GlyphType);
-    ShapeLinkAdd(&out, GlyphCreate(1256, 2, BUTTON_R, COLOR_WHITE, FONT_BTN[FSize20]), GlyphType);
+
+    Glyph_t *leftButtonIcon = GlyphCreate(804, 2, BUTTON_L, COLOR_WHITE, FONT_BTN[FSize20]);
+    Glyph_t *rightButtonIcon = GlyphCreate(1256, 2, BUTTON_R, COLOR_WHITE, FONT_BTN[FSize20]);
+
+    if (rI->page == 1) {
+        SETBIT(leftButtonIcon->options, TEXT_GLYPH_NO_RENDER, 1);
+    }
+    if (rI->page == rI->pageCount) {
+        SETBIT(leftButtonIcon->options, TEXT_GLYPH_NO_RENDER, 1);
+    }
+
+    ShapeLinkAdd(&out, leftButtonIcon, GlyphType);
+    ShapeLinkAdd(&out, rightButtonIcon, GlyphType);
 
     return out;
 }

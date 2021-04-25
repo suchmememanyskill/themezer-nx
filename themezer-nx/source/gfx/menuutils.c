@@ -120,10 +120,26 @@ int MakeRequestAsCtx(Context_t *ctx, RequestInfo_t *rI){
             int offset = (GetInstallButtonState()) ? 10 : 8;
 
             Button_t *leftButton = ShapeLinkOffset(all, offset)->item;
+            Glyph_t *leftButtonIcon = ShapeLinkOffset(all, offset + 11)->item;
             Button_t *rightButton = ShapeLinkOffset(all, offset + 3)->item;
+            Glyph_t *rightButtonIcon = ShapeLinkOffset(all, offset + 12)->item;
 
-            leftButton->secondary = (rI->page > 1) ? COLOR_BTNPAGINATION : COLOR_TOPBARBUTTONS;
-            rightButton->secondary = (rI->page < rI->pageCount) ? COLOR_BTNPAGINATION : COLOR_TOPBARBUTTONS;
+            // Left end
+            if (rI->page > 1) {
+                leftButton->secondary = COLOR_BTNPAGINATION;
+                SETBIT(leftButtonIcon->options, TEXT_GLYPH_NO_RENDER, 0);
+            } else {
+                leftButton->secondary = COLOR_TOPBARBUTTONS;
+                SETBIT(leftButtonIcon->options, TEXT_GLYPH_NO_RENDER, 1);
+            }
+            // Right end
+            if (rI->page < rI->pageCount) {
+                rightButton->secondary = COLOR_BTNPAGINATION;
+                SETBIT(rightButtonIcon->options, TEXT_GLYPH_NO_RENDER, 0);
+            } else {
+                rightButton->secondary = COLOR_TOPBARBUTTONS;
+                SETBIT(rightButtonIcon->options, TEXT_GLYPH_NO_RENDER, 1);
+            }
         }
     }
     else {
