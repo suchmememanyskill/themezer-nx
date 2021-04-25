@@ -6,7 +6,7 @@
 #include "../utils.h"
 #include "../curl.h"
 
-extern SDL_Texture *menuIcon, *searchIcon, *setIcon, *arrowLIcon, *arrowRIcon, *LeImg, *XIcon, *loadingScreen;
+extern SDL_Texture *menuIcon, *searchIcon, *setIcon, *arrowLIcon, *arrowRIcon, *LeImg, *XIcon, *loadingScreen, *logo;
 
 // textures.c
 void InitTextures();

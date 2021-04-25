@@ -29,7 +29,7 @@ int ShowSideTargetMenu(Context_t *ctx){
             rI->target = selection;
             if (selection == 8){
                 rI->maxDls = 3;
-                rI->limit = 8;
+                rI->limit = 12;
             }
             printf("Making request...\n");
             if (MakeRequestAsCtx(ctx, rI)){

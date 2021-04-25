@@ -86,7 +86,7 @@ ShapeLinker_t *CreateMainMenu(ShapeLinker_t *listItems, RequestInfo_t *rI) {
     ShapeLinkAdd(&out, ImageCreate(arrowLIcon, POS(830, 0, 60, 60), 0), ImageType);
 
     // Easter egg
-    ShapeLinkAdd(&out, ButtonCreate(POS(495, 0, 170, 60), COLOR_TOPBARBUTTONS, COLOR_TOPBARBUTTONS, COLOR_WHITE, COLOR_TOPBARBUTTONS, BUTTON_NOJOYSEL, ButtonStyleFlat, NULL, NULL, lennify), ButtonType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(386, 0, 170, 60), COLOR_TOPBARBUTTONS, COLOR_TOPBARBUTTONS, COLOR_WHITE, COLOR_TOPBARBUTTONS, BUTTON_NOJOYSEL, ButtonStyleFlat, NULL, NULL, lennify), ButtonType);
 
     // RightArrow
     ShapeLinkAdd(&out, ButtonCreate(POS(1160, 0, 120, 60), COLOR_TOPBARBUTTONS, rI->page == rI->pageCount ? COLOR_TOPBARBUTTONS : COLOR_BTNPAGINATION, COLOR_WHITE, COLOR_CURSOR, 0, ButtonStyleBottomStrip, NULL, NULL, NextPageButton), ButtonType);
@@ -94,7 +94,10 @@ ShapeLinker_t *CreateMainMenu(ShapeLinker_t *listItems, RequestInfo_t *rI) {
 
     ShapeLinkAdd(&out, ListGridCreate(POS(0, 60, SCREEN_W, SCREEN_H - 60), 4, 260, COLOR_MAINBG, COLOR_CARDCURSOR, COLOR_CARDCURSORPRESS, COLOR_SCROLLBAR, COLOR_SCROLLBARTHUMB, (listItems) ? GRID_NOSIDEESC : LIST_DISABLED, listItems, ThemeSelect, NULL, FONT_TEXT[FSize23]), ListGridType);
     // 4, 260
-        
+
+    // Logo
+    ShapeLinkAdd(&out, ImageCreate(logo, POS(584, 0, 60, 60), 0), ImageType);
+
     ShapeLinkAdd(&out, rI, DataType);
 
     return out;
