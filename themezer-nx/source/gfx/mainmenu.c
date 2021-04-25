@@ -95,10 +95,17 @@ ShapeLinker_t *CreateMainMenu(ShapeLinker_t *listItems, RequestInfo_t *rI) {
     ShapeLinkAdd(&out, ListGridCreate(POS(0, 60, SCREEN_W, SCREEN_H - 60), 4, 260, COLOR_MAINBG, COLOR_CARDCURSOR, COLOR_CARDCURSORPRESS, COLOR_SCROLLBAR, COLOR_SCROLLBARTHUMB, (listItems) ? GRID_NOSIDEESC : LIST_DISABLED, listItems, ThemeSelect, NULL, FONT_TEXT[FSize23]), ListGridType);
     // 4, 260
 
+    ShapeLinkAdd(&out, rI, DataType);
+
     // Logo
     ShapeLinkAdd(&out, ImageCreate(logo, POS(584, 0, 60, 60), 0), ImageType);
 
-    ShapeLinkAdd(&out, rI, DataType);
+    // Glyphs
+    ShapeLinkAdd(&out, GlyphCreate(97, 2, BUTTON_X, COLOR_WHITE, FONT_BTN[FSize20]), GlyphType);
+    ShapeLinkAdd(&out, GlyphCreate(217, 2, BUTTON_Y, COLOR_WHITE, FONT_BTN[FSize20]), GlyphType);
+    ShapeLinkAdd(&out, GlyphCreate(337, 2, BUTTON_MINUS, COLOR_WHITE, FONT_BTN[FSize20]), GlyphType);
+    ShapeLinkAdd(&out, GlyphCreate(804, 2, BUTTON_L, COLOR_WHITE, FONT_BTN[FSize20]), GlyphType);
+    ShapeLinkAdd(&out, GlyphCreate(1256, 2, BUTTON_R, COLOR_WHITE, FONT_BTN[FSize20]), GlyphType);
 
     return out;
 }

@@ -53,7 +53,7 @@ int DownloadThemeButton(Context_t *ctx){
 }
 
 int InstallThemeButton(Context_t *ctx){
-    ShapeLinker_t *out = CreateBaseMessagePopup("Install Queued!", "Install Queued. Exit the app to apply the theme.\nYou can exit the app by pressing the + button or by selecting 'Exit Themezer-NX' in 'Type' selection menu.\nPress A or tap the screen to continue");
+    ShapeLinker_t *out = CreateBaseMessagePopup("Install Queued!", "Install Queued. Exit the app to apply the theme.\nYou can exit the app by pressing the + button or by selecting 'Exit Themezer-NX' in the 'Type' selection menu.\nPress A or tap the screen to continue");
 
     ShapeLinkAdd(&out, RectangleCreate(POS(250, 470, 780, 50), COLOR_CARDCURSOR, 1), RectangleType);
     ShapeLinkAdd(&out, ButtonCreate(POS(0, 0, SCREEN_W, SCREEN_H), COLOR(0,0,0,0), COLOR(0,0,0,0), COLOR(0,0,0,0), COLOR(0,0,0,0), 0, ButtonStyleFlat, NULL, NULL, exitFunc), ButtonType);
