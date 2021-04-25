@@ -3,7 +3,7 @@
 int lennify(Context_t *ctx){
     static int lenny = false;
     if (!lenny){
-        ShapeLinkAdd(&ctx->all, ImageCreate(LeImg, POS(495, 0, 170, 60), 0), ImageType);
+        ShapeLinkAdd(&ctx->all, ImageCreate(LeImg, POS(386, 0, 170, 60), 0), ImageType);
         lenny = true;
     }
     return 0;
