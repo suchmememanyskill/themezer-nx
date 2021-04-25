@@ -10,7 +10,7 @@ int HandleQueueList(Context_t *ctx){
 
     if (!CheckIfInstallSlotIsFree(installSlotOffset)){
         char *message = CopyTextArgsUtil("Are you sure you want to remove the %s's queued install?", targetOptions[installSlotOffset]);
-        ShapeLinker_t *menu = CreateBaseMessagePopup("Remove Queued item?", message);
+        ShapeLinker_t *menu = CreateBaseMessagePopup("Remove Queued Item?", message);
         free(message);
 
         ShapeLinkAdd(&menu, ButtonCreate(POS(640, 470, 390, 50), COLOR_MAINBG, COLOR_CURSORPRESS, COLOR_WHITE, COLOR_CURSOR, 0, ButtonStyleBottomStrip, "No", FONT_TEXT[FSize28], exitFunc), ButtonType);
