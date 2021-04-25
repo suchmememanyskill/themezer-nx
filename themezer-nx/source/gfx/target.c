@@ -5,7 +5,7 @@ ShapeLinker_t *CreateSideTargetMenu(){
 
     ShapeLinker_t *list = NULL;
     for (int i = 0; i < 9; i++)
-        ShapeLinkAdd(&list, ListItemCreate(COLOR_WHITE, COLOR_WHITE, NULL, targetOptions[i], NULL), ListItemType);
+        ShapeLinkAdd(&list, ListItemCreate((rI->target == i) ? COLOR_GREEN : COLOR_WHITE, COLOR_WHITE, NULL, targetOptions[i], NULL), ListItemType);
 
     ShapeLinkAdd(&out, ListViewCreate(POS(0, 50, 400, SCREEN_H - 100), 60, COLOR_MAINBG, COLOR_CURSOR, COLOR_CURSORPRESS, COLOR_SCROLLBAR, COLOR_SCROLLBARTHUMB, LIST_CENTERLEFT, list, exitFunc, NULL, FONT_TEXT[FSize30]), ListViewType);
 
@@ -15,13 +15,13 @@ ShapeLinker_t *CreateSideTargetMenu(){
 }
 
 int ShowSideTargetMenu(Context_t *ctx){
-    ShapeLinker_t *menu = CreateSideTargetMenu();
+    RequestInfo_t *rI = ShapeLinkFind(ctx->all, DataType)->item;
+    ShapeLinker_t *menu = CreateSideTargetMenu(rI);
     Context_t menuCtx = MakeMenu(menu, ButtonHandlerBExit, NULL);
 
     if (menuCtx.selected->type == ListViewType && menuCtx.origin == OriginFunction){
         ListView_t *lv = menuCtx.selected->item;
         int selection = lv->highlight;
-        RequestInfo_t *rI = ShapeLinkFind(ctx->all, DataType)->item;
         if (rI->target != selection){
             int tempTarget = rI->target;
             int tempPage = rI->page;
