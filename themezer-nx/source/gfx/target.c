@@ -4,8 +4,14 @@ ShapeLinker_t *CreateSideTargetMenu(RequestInfo_t *rI){
     ShapeLinker_t *out = CreateSideBaseMenu("Type");
 
     ShapeLinker_t *list = NULL;
-    for (int i = 0; i < 9; i++)
-        ShapeLinkAdd(&list, ListItemCreate((rI->target == i) ? COLOR_FILTERACTIVE : COLOR_WHITE, COLOR_WHITE, NULL, targetOptions[i], NULL), ListItemType);
+    for (int i = 0; i < 9; i++) {
+        if (rI->target == i) {
+            SetActiveColorTexture(targetIcons[i]);
+        } else {
+            SetInactiveColorTexture(targetIcons[i]);
+        }
+        ShapeLinkAdd(&list, ListItemCreate((rI->target == i) ? COLOR_FILTERACTIVE : COLOR_WHITE, COLOR_WHITE, targetIcons[i], targetOptions[i], NULL), ListItemType);
+    }
 
     ShapeLinkAdd(&out, ListViewCreate(POS(0, 50, 400, SCREEN_H - 100), 60, COLOR_MAINBG, COLOR_CURSOR, COLOR_CURSORPRESS, COLOR_SCROLLBAR, COLOR_SCROLLBARTHUMB, LIST_CENTERLEFT, list, exitFunc, NULL, FONT_TEXT[FSize30]), ListViewType);
 

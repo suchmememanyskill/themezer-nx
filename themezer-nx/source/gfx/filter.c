@@ -3,16 +3,21 @@
 int SideMenuSortSelection(Context_t *ctx){
     ShapeLinker_t *all = ctx->all;
     ListView_t *lv = ShapeLinkOffset(all, 14)->item;
-    TextCentered_t *text = ShapeLinkOffset(all, 13)->item;
     FilterOptions_t *options = ShapeLinkFind(all, DataType)->item;
     int selection = lv->highlight;
 
     if (selection != options->sort){
-        if (text->text.text != NULL)
-            free(text->text.text);
+        // Remove active color
+        ListItem_t *previousItem = ShapeLinkOffset(lv->text, options->sort)->item;
+        previousItem->leftColor = COLOR_WHITE;
+        SetInactiveColorTexture(sortIcons[options->sort]);
 
         options->sort = selection;
-        text->text.text = CopyTextArgsUtil("Sort by: %s", sortOptions[options->sort]);
+
+        // Set active color
+        ListItem_t *newItem = ShapeLinkOffset(lv->text, options->sort)->item;
+        newItem->leftColor = COLOR_FILTERACTIVE;
+        SetActiveColorTexture(sortIcons[options->sort]);
     }
 
     return 0;
@@ -21,16 +26,21 @@ int SideMenuSortSelection(Context_t *ctx){
 int SideMenuOrderSelection(Context_t *ctx){
     ShapeLinker_t *all = ctx->all;
     ListView_t *lv = ShapeLinkOffset(all, 17)->item;
-    TextCentered_t *text = ShapeLinkOffset(all, 16)->item;
     FilterOptions_t *options = ShapeLinkFind(all, DataType)->item;
     int selection = lv->highlight;
 
     if (selection != options->order){
-        if (text->text.text != NULL)
-            free(text->text.text);
+        // Remove active color
+        ListItem_t *previousItem = ShapeLinkOffset(lv->text, options->order)->item;
+        previousItem->leftColor = COLOR_WHITE;
+        SetInactiveColorTexture(orderIcons[options->order]);
 
         options->order = selection;
-        text->text.text = CopyTextArgsUtil("Order: %s", orderOptions[options->order]);
+
+        // Set active color
+        ListItem_t *newItem = ShapeLinkOffset(lv->text, options->order)->item;
+        newItem->leftColor = COLOR_FILTERACTIVE;
+        SetActiveColorTexture(orderIcons[options->order]);
     }
 
     return 0;
@@ -85,26 +95,36 @@ ShapeLinker_t *CreateSideFilterMenu(FilterOptions_t *options){
 
     ShapeLinkAdd(&out, RectangleCreate(POS(0, 200, 400, 50), COLOR_BTN2, 1), RectangleType);
 
-    char *sort = CopyTextArgsUtil("Sort by: %s", sortOptions[options->sort]);
-    ShapeLinkAdd(&out, TextCenteredCreate(POS(0, 200, 400, 50), sort, COLOR_WHITE, FONT_TEXT[FSize23]), TextCenteredType);
-    free(sort);
+    ShapeLinkAdd(&out, TextCenteredCreate(POS(0, 200, 400, 50), "Sort By", COLOR_WHITE, FONT_TEXT[FSize23]), TextCenteredType);
 
     ShapeLinker_t *sortList = NULL;
-    for (int i = 0; i < 4; i++)
-        ShapeLinkAdd(&sortList, ListItemCreate(COLOR_WHITE, COLOR_WHITE, NULL, sortOptions[i], NULL), ListItemType);
+    for (int i = 0; i < 4; i++) {
+        if (i == options->sort) {
+            SetActiveColorTexture(sortIcons[i]);
+        } else {
+            SetInactiveColorTexture(sortIcons[i]);
+        }
+        ShapeLinkAdd(&sortList, ListItemCreate((i == options->sort) ? COLOR_FILTERACTIVE : COLOR_WHITE, COLOR_WHITE, sortIcons[i], sortOptions[i], NULL), ListItemType);
+    }
 
     ShapeLinkAdd(&out, ListViewCreate(POS(0, 250, 400, 200), 50, COLOR_MAINBG, COLOR_CURSOR, COLOR_CURSORPRESS, COLOR_SCROLLBAR, COLOR_SCROLLBARTHUMB, LIST_CENTERLEFT, sortList, SideMenuSortSelection, NULL, FONT_TEXT[FSize28]), ListViewType);
 
 
     ShapeLinkAdd(&out, RectangleCreate(POS(0, 490, 400, 50), COLOR_BTN2, 1), RectangleType);
 
-    char *order = CopyTextArgsUtil("Order: %s", orderOptions[options->order]);
+    char *order = CopyTextUtil("Order");
     ShapeLinkAdd(&out, TextCenteredCreate(POS(0, 490, 400, 50), order, COLOR_WHITE, FONT_TEXT[FSize23]), TextCenteredType);
     free(order);
 
     ShapeLinker_t *orderList = NULL;
-    for (int i = 0; i < 2; i++)
-        ShapeLinkAdd(&orderList, ListItemCreate(COLOR_WHITE, COLOR_WHITE, NULL, orderOptions[i], NULL), ListItemType);
+    for (int i = 0; i < 2; i++) {
+        if (i == options->order) {
+            SetActiveColorTexture(orderIcons[i]);
+        } else {
+            SetInactiveColorTexture(orderIcons[i]);
+        }
+        ShapeLinkAdd(&orderList, ListItemCreate((i == options->order) ? COLOR_FILTERACTIVE : COLOR_WHITE, COLOR_WHITE, orderIcons[i], orderOptions[i], NULL), ListItemType);
+    }
 
     ShapeLinkAdd(&out, ListViewCreate(POS(0, 540, 400, 100), 50, COLOR_MAINBG, COLOR_CURSOR, COLOR_CURSORPRESS, COLOR_SCROLLBAR, COLOR_SCROLLBARTHUMB, LIST_CENTERLEFT, orderList, SideMenuOrderSelection, NULL, FONT_TEXT[FSize28]), ListViewType);
 

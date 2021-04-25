@@ -7,10 +7,15 @@
 #include "../curl.h"
 
 extern SDL_Texture *menuIcon, *searchIcon, *setIcon, *arrowLIcon, *arrowRIcon, *LeImg, *XIcon, *loadingScreen, *logo;
+extern SDL_Texture *targetIcons[];
+extern SDL_Texture *sortIcons[];
+extern SDL_Texture *orderIcons[];
 
 // textures.c
 void InitTextures();
 void DestroyTextures();
+void SetActiveColorTexture(SDL_Texture *texture);
+void SetInactiveColorTexture(SDL_Texture *texture);
 
 // menuutils.c
 int MakeRequestAsCtx(Context_t *ctx, RequestInfo_t *rI);
