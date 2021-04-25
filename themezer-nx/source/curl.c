@@ -17,9 +17,9 @@ const char *requestTargets[] = {
 };
 
 const char *requestSorts[] = {
+    "updated",
     "downloads",
     "likes",
-    "updated",
     "id"
 };
 
