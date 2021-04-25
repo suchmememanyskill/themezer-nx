@@ -46,6 +46,12 @@ int ButtonHandlerMainMenu(Context_t *ctx){
         return NextPageButton(ctx);
     if (ctx->kHeld & KEY_L)
         return PrevPageButton(ctx);
+    if (ctx->kHeld & KEY_Y)
+        return ShowSideFilterMenu(ctx);
+    if (ctx->kHeld & KEY_X)
+        return ShowSideTargetMenu(ctx);
+    if (ctx->kHeld & KEY_MINUS)
+        return ShowSideQueueMenu(ctx);
 
     return 0;
 }
