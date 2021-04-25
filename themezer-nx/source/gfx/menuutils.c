@@ -102,6 +102,7 @@ int MakeRequestAsCtx(Context_t *ctx, RequestInfo_t *rI){
             items = GenListItemList(rI);
             AddThemeImagesToDownloadQueue(rI, true);
 
+            // Update pagination text
             ShapeLinker_t *all = ctx->all;
             ListGrid_t *gv = ShapeLinkFind(all, ListGridType)->item;
             TextCentered_t *pageText = ShapeLinkFind(all, TextCenteredType)->item;
@@ -112,8 +113,17 @@ int MakeRequestAsCtx(Context_t *ctx, RequestInfo_t *rI){
             SETBIT(gv->options, LIST_DISABLED, !items);
             gv->highlight = 0;
             free(pageText->text.text);
-            pageText->text.text = CopyTextArgsUtil("Page %d/%d", rI->page, rI->pageCount);
-            
+            pageText->text.text = CopyTextArgsUtil("%d/%d (%d)", rI->page, rI->pageCount, rI->itemCount);
+
+            // Update pagination buttons
+            //10, 13
+            int offset = (GetInstallButtonState()) ? 10 : 8;
+
+            Button_t *leftButton = ShapeLinkOffset(all, offset)->item;
+            Button_t *rightButton = ShapeLinkOffset(all, offset + 3)->item;
+
+            leftButton->secondary = (rI->page > 1) ? COLOR_BTNPAGINATION : COLOR_TOPBARBUTTONS;
+            rightButton->secondary = (rI->page < rI->pageCount) ? COLOR_BTNPAGINATION : COLOR_TOPBARBUTTONS;
         }
     }
     else {
