@@ -43,13 +43,13 @@ ShapeLinker_t *CreateSideQueueMenu(){
         if (!CheckIfInstallSlotIsFree(i)){
             hasAtLeastOne = 1;
             char *t = CopyTextUtil(targetOptions[i]);
-            ShapeLinkAdd(&text, ListItemCreate(COLOR_GREEN, COLOR_WHITE, NULL, t, NULL), ListItemType);
+            ShapeLinkAdd(&text, ListItemCreate(COLOR_FILTERACTIVE, COLOR_WHITE, NULL, t, NULL), ListItemType);
             free(t);
         }
     }
 
     if (hasAtLeastOne)
-          ShapeLinkAdd(&out, ListViewCreate(POS(0, 50, 400, SCREEN_H - 100), 75, COLOR_MAINBG, COLOR_CURSOR, COLOR_CURSORPRESS, COLOR_SCROLLBAR, COLOR_SCROLLBARTHUMB, LIST_CENTERLEFT, text, HandleQueueList, NULL, FONT_TEXT[FSize28]), ListViewType);
+        ShapeLinkAdd(&out, ListViewCreate(POS(0, 50, 400, SCREEN_H - 100), 75, COLOR_MAINBG, COLOR_CURSOR, COLOR_CURSORPRESS, COLOR_SCROLLBAR, COLOR_SCROLLBARTHUMB, LIST_CENTERLEFT, text, HandleQueueList, NULL, FONT_TEXT[FSize28]), ListViewType);
 
     return out;
 }

@@ -69,7 +69,7 @@ int InstallThemeButton(Context_t *ctx){
         res = DownloadThemeButton(ctx);
     
     if (!res){
-        SetInstallSlot(targetOptions[target->target], path);
+        SetInstallSlot(target->target, path);
 
         MakeMenu(out, ButtonHandlerBExit, NULL);
     }
