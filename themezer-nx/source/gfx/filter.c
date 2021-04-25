@@ -12,7 +12,7 @@ int SideMenuSortSelection(Context_t *ctx){
             free(text->text.text);
 
         options->sort = selection;
-        text->text.text = CopyTextArgsUtil("Sort selection: %s", sortOptions[options->sort]);
+        text->text.text = CopyTextArgsUtil("Sort by: %s", sortOptions[options->sort]);
     }
 
     return 0;
@@ -30,7 +30,7 @@ int SideMenuOrderSelection(Context_t *ctx){
             free(text->text.text);
 
         options->order = selection;
-        text->text.text = CopyTextArgsUtil("Order selection: %s", orderOptions[options->order]);
+        text->text.text = CopyTextArgsUtil("Order: %s", orderOptions[options->order]);
     }
 
     return 0;
@@ -43,7 +43,7 @@ int SideMenuClearSearch(Context_t *ctx){
         free(options->search);
         options->search = CopyTextUtil("");
         free(text->text.text);
-        text->text.text = CopyTextUtil("Search: None");
+        text->text.text = CopyTextUtil("Search");
     }
 
     return 0;
@@ -72,20 +72,20 @@ int SideMenuSetSearch(Context_t *ctx){
 }
 
 ShapeLinker_t *CreateSideFilterMenu(FilterOptions_t *options){
-    ShapeLinker_t *out = CreateSideBaseMenu("Select filters:");
+    ShapeLinker_t *out = CreateSideBaseMenu("Search & Filters");
 
     ShapeLinkAdd(&out, options, DataType);
 
-    char *search = CopyTextArgsUtil("Search: %s", (options->search[0]) ? options->search : "None");
+    char *search = options->search[0] ? CopyTextArgsUtil("Search: %s", (options->search)) : CopyTextUtil("Search");
     ShapeLinkAdd(&out, RectangleCreate(POS(0, 60, 400, 50), COLOR_BTN2, 1), RectangleType);
     ShapeLinkAdd(&out, TextCenteredCreate(POS(0, 60, 400, 50), search, COLOR_WHITE, FONT_TEXT[FSize23]), TextCenteredType);
-    ShapeLinkAdd(&out, ButtonCreate(POS(200, 110, 200, 50), COLOR_MAINBG, COLOR_CURSORPRESS, COLOR_WHITE, COLOR_CURSOR, 0, ButtonStyleFlat, "Clear Search", FONT_TEXT[FSize28], SideMenuClearSearch), ButtonType);
-    ShapeLinkAdd(&out, ButtonCreate(POS(0, 110, 200, 50), COLOR_MAINBG, COLOR_CURSORPRESS, COLOR_WHITE, COLOR_CURSOR, 0, ButtonStyleFlat, "Set Search", FONT_TEXT[FSize28], SideMenuSetSearch), ButtonType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(200, 110, 200, 50), COLOR_MAINBG, COLOR_CURSORPRESS, COLOR_WHITE, COLOR_CURSOR, 0, ButtonStyleFlat, "Clear", FONT_TEXT[FSize28], SideMenuClearSearch), ButtonType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(0, 110, 200, 50), COLOR_MAINBG, COLOR_CURSORPRESS, COLOR_WHITE, COLOR_CURSOR, 0, ButtonStyleFlat, "Set", FONT_TEXT[FSize28], SideMenuSetSearch), ButtonType);
     free(search);
 
     ShapeLinkAdd(&out, RectangleCreate(POS(0, 200, 400, 50), COLOR_BTN2, 1), RectangleType);
 
-    char *sort = CopyTextArgsUtil("Sort selection: %s", sortOptions[options->sort]);
+    char *sort = CopyTextArgsUtil("Sort by: %s", sortOptions[options->sort]);
     ShapeLinkAdd(&out, TextCenteredCreate(POS(0, 200, 400, 50), sort, COLOR_WHITE, FONT_TEXT[FSize23]), TextCenteredType);
     free(sort);
 
@@ -98,7 +98,7 @@ ShapeLinker_t *CreateSideFilterMenu(FilterOptions_t *options){
 
     ShapeLinkAdd(&out, RectangleCreate(POS(0, 490, 400, 50), COLOR_BTN2, 1), RectangleType);
 
-    char *order = CopyTextArgsUtil("Order selection: %s", orderOptions[options->order]);
+    char *order = CopyTextArgsUtil("Order: %s", orderOptions[options->order]);
     ShapeLinkAdd(&out, TextCenteredCreate(POS(0, 490, 400, 50), order, COLOR_WHITE, FONT_TEXT[FSize23]), TextCenteredType);
     free(order);
 
@@ -108,7 +108,7 @@ ShapeLinker_t *CreateSideFilterMenu(FilterOptions_t *options){
 
     ShapeLinkAdd(&out, ListViewCreate(POS(0, 540, 400, 100), 50, COLOR_MAINBG, COLOR_CURSOR, COLOR_CURSORPRESS, COLOR_SCROLLBAR, COLOR_SCROLLBARTHUMB, LIST_CENTERLEFT, orderList, SideMenuOrderSelection, NULL, FONT_TEXT[FSize28]), ListViewType);
 
-    ShapeLinkAdd(&out, ButtonCreate(POS(0, SCREEN_H - 50, 400, 50), COLOR_MAINBG, COLOR_BTN2, COLOR_WHITE, COLOR_CURSOR, 0, ButtonStyleBottomStrip, "Apply filters", FONT_TEXT[FSize28], exitFunc), ButtonType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(0, SCREEN_H - 50, 400, 50), COLOR_MAINBG, COLOR_CARDCURSOR, COLOR_WHITE, COLOR_CURSOR, 0, ButtonStyleBottomStrip, "Apply", FONT_TEXT[FSize28], exitFunc), ButtonType);
 
     return out;
 }

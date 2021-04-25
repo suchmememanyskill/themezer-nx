@@ -1,7 +1,7 @@
 #include "gfx.h"
 
 ShapeLinker_t *CreateSideTargetMenu(){
-    ShapeLinker_t *out = CreateSideBaseMenu("Select a target:");
+    ShapeLinker_t *out = CreateSideBaseMenu("Type Selection");
 
     ShapeLinker_t *list = NULL;
     for (int i = 0; i < 9; i++)

@@ -10,13 +10,13 @@ const char *targetOptions[] = {
     "News",
     "All",
     "Packs"
-};
+    };
 
 const char *sortOptions[] = {
-    "Last updated",
     "Downloads",
     "Likes",
-    "Creation date"
+    "Last Updated",
+    "Creation Date"
 };
 
 const char *orderOptions[] = {

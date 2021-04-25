@@ -33,7 +33,7 @@ int HandleQueueList(Context_t *ctx){
 }
 
 ShapeLinker_t *CreateSideQueueMenu(){
-    ShapeLinker_t *out = CreateSideBaseMenu("Currently queued installs:");
+    ShapeLinker_t *out = CreateSideBaseMenu("Queued Installs");
 
     ShapeLinker_t *text = NULL;
     for (int i = 0; i < 7; i++){

@@ -17,9 +17,9 @@ const char *requestTargets[] = {
 };
 
 const char *requestSorts[] = {
-    "updated",
     "downloads",
     "likes",
+    "updated",
     "id"
 };
 
@@ -289,9 +289,7 @@ int ParseThemeList(ThemeInfo_t **storage, int size, cJSON *themesList){
             themes[i].likeCount = like_count->valueint;
                     
             themes[i].lastUpdated = CopyTextUtil(last_updated->valuestring);
-            if (cJSON_IsNull(description))
-                themes[i].description = CopyTextUtil("no description");
-            else
+            if (!cJSON_IsNull(description))
                 themes[i].description = CopyTextUtil(description->valuestring);
                     
             themes[i].name = SanitizeString(name->valuestring);
