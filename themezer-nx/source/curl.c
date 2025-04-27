@@ -42,33 +42,41 @@ char *GenLink(RequestInfo_t *rI){
         requestTarget = CopyTextArgsUtil("\"%s\"",requestTargets[rI->target]);
     
     static char request[0x600];
-    char queryBuffer[0x400];
+    char variables[0x400];
+    char *query;
     if (rI->target <= 7)
-        snprintf(queryBuffer, 0x400,"query($target:String,$page:Int,$limit:Int,$sort:String,$order:String,$query:String){themeList(target:$target,page:$page,limit:$limit,sort:$sort,order:$order,query:$query){id,creator{display_name},details{name,description},last_updated,dl_count,like_count,target,preview{original,thumb}}}&variables={\"target\":%s,\"page\":%d,\"limit\":%d,\"sort\":\"%s\",\"order\":\"%s\",\"query\":%s}",\
-        requestTarget, rI->page, rI->limit, requestSorts[rI->sort], requestOrders[rI->order], searchQuoted);
+    {
+        // query($target:String,$page:Int,$limit:Int,$sort:String,$order:String,$query:String){themeList(target:$target,page:$page,limit:$limit,sort:$sort,order:$order,query:$query){id,creator{display_name},details{name,description},last_updated,dl_count,like_count,target,preview{original,thumb}}}
+        query = "query%28%24target%3AString%2C%24page%3AInt%2C%24limit%3AInt%2C%24sort%3AString%2C%24order%3AString%2C%24query%3AString%29%7BthemeList%28target%3A%24target%2Cpage%3A%24page%2Climit%3A%24limit%2Csort%3A%24sort%2Corder%3A%24order%2Cquery%3A%24query%29%7Bid%2Ccreator%7Bdisplay_name%7D%2Cdetails%7Bname%2Cdescription%7D%2Clast_updated%2Cdl_count%2Clike_count%2Ctarget%2Cpreview%7Boriginal%2Cthumb%7D%7D%7D";
+        snprintf(variables, 0x400,"{\"target\":%s,\"page\":%d,\"limit\":%d,\"sort\":\"%s\",\"order\":\"%s\",\"query\":%s}",\
+            requestTarget, rI->page, rI->limit, requestSorts[rI->sort], requestOrders[rI->order], searchQuoted);
+    }
     else if (rI->target == 8)
-        snprintf(queryBuffer, 0x400, "query($page:Int,$limit:Int,$sort:String,$order:String,$query:String){packList(page:$page,limit:$limit,sort:$sort,order:$order,query:$query){id,creator{display_name},details{name,description},last_updated,dl_count,like_count,themes{id,creator{display_name},details{name,description},last_updated,dl_count,like_count,target,preview{original,thumb}}}}&variables={\"page\":%d,\"limit\":%d,\"sort\":\"%s\",\"order\":\"%s\",\"query\":%s}",\
-        rI->page, rI->limit, requestSorts[rI->sort], requestOrders[rI->order], searchQuoted);
-    
+    {
+        // query($page:Int,$limit:Int,$sort:String,$order:String,$query:String){packList(page:$page,limit:$limit,sort:$sort,order:$order,query:$query){id,creator{display_name},details{name,description},last_updated,dl_count,like_count,themes{id,creator{display_name},details{name,description},last_updated,dl_count,like_count,target,preview{original,thumb}}}}
+        query = "query%28%24page%3AInt%2C%24limit%3AInt%2C%24sort%3AString%2C%24order%3AString%2C%24query%3AString%29%7BpackList%28page%3A%24page%2Climit%3A%24limit%2Csort%3A%24sort%2Corder%3A%24order%2Cquery%3A%24query%29%7Bid%2Ccreator%7Bdisplay_name%7D%2Cdetails%7Bname%2Cdescription%7D%2Clast_updated%2Cdl_count%2Clike_count%2Cthemes%7Bid%2Ccreator%7Bdisplay_name%7D%2Cdetails%7Bname%2Cdescription%7D%2Clast_updated%2Cdl_count%2Clike_count%2Ctarget%2Cpreview%7Boriginal%2Cthumb%7D%7D%7D%7D";
+        snprintf(variables, 0x400, "{\"page\":%d,\"limit\":%d,\"sort\":\"%s\",\"order\":\"%s\",\"query\":%s}",\
+            rI->page, rI->limit, requestSorts[rI->sort], requestOrders[rI->order], searchQuoted);
+    }
 
     CURL *curl = curl_easy_init();
     if(curl) {
-        char *output = curl_easy_escape(curl, queryBuffer, 15);
+        char *output = curl_easy_escape(curl, variables, 0);
         if(output) {
             printf("Encoded: %s\n", output);
-            snprintf(request, 0x600, "https://api.themezer.net/?query=%s", output);
+            snprintf(request, 0x600, "https://api.themezer.net/?query=%s&variables=%s", query, output);
             curl_free(output);
         }
         else 
         {
-            snprintf(request, 0x600, "https://api.themezer.net/?query=%s", queryBuffer);
+            snprintf(request, 0x600, "https://api.themezer.net/?query=%s&variables=%s", query, variables);
         }
         curl_easy_cleanup(curl);
     }
-        
+
     free(searchQuoted);
     free(requestTarget);
-
+    
     printf("Request: %s\n\n", request);
     return request;
 }
