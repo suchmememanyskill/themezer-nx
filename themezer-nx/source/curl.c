@@ -42,7 +42,7 @@ char *GenLink(RequestInfo_t *rI){
         requestTarget = CopyTextArgsUtil("\"%s\"",requestTargets[rI->target]);
     
     static char request[0x600];
-    static char queryBuffer[0x400];
+    char queryBuffer[0x400];
     if (rI->target <= 7)
         snprintf(queryBuffer, 0x400,"query($target:String,$page:Int,$limit:Int,$sort:String,$order:String,$query:String){themeList(target:$target,page:$page,limit:$limit,sort:$sort,order:$order,query:$query){id,creator{display_name},details{name,description},last_updated,dl_count,like_count,target,preview{original,thumb}}}&variables={\"target\":%s,\"page\":%d,\"limit\":%d,\"sort\":\"%s\",\"order\":\"%s\",\"query\":%s}",\
         requestTarget, rI->page, rI->limit, requestSorts[rI->sort], requestOrders[rI->order], searchQuoted);
