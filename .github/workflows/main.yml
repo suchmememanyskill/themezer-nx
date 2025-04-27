@@ -7,7 +7,9 @@ jobs:
     container: devkitpro/devkita64
     steps:
     - uses: actions/checkout@v4
-      submodules: true
+      with:
+        submodules: true
+        fetch-depth: 0
         
     - name: Building ThemezerNX
       run: |
