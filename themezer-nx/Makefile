@@ -39,7 +39,7 @@ include $(DEVKITPRO)/libnx/switch_rules
 #---------------------------------------------------------------------------------
 APP_TITLE   := Themezer-NX
 APP_AUTHOR  := Such Meme, Many Skill
-APP_VERSION := 2.0.0
+APP_VERSION := 2.0.1
 
 TARGET		:=	$(notdir $(CURDIR))
 BUILD		:=	build
@@ -63,7 +63,7 @@ CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 
-LIBS	:=  -lJAGL -lcurl -lSDL2_ttf -lSDL2_image -lwebp -lpng -lturbojpeg -lSDL2 -lSDL2_gfx `sdl2-config --libs` `freetype-config --libs` \
+LIBS	:=  -lJAGL -lcurl `$(PREFIX)pkg-config --libs sdl2 SDL2_image SDL2_ttf` -lSDL2_ttf -lSDL2_image -lwebp -lpng -lturbojpeg -lSDL2 -lSDL2_gfx `sdl2-config --libs` `freetype-config --libs` \
 			-lmbedtls -lmbedx509 -lmbedcrypto -lz -lnx
 
 #---------------------------------------------------------------------------------
