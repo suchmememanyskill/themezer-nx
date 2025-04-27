@@ -20,7 +20,7 @@ int exitFunc(Context_t *ctx){
 }
 
 int ButtonHandlerBExit(Context_t *ctx){
-    if (ctx->kHeld & KEY_B)
+    if (ctx->kHeld & HidNpadButton_B)
         return -1;
 
     return 0;

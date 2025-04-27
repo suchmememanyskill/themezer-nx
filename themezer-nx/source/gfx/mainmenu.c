@@ -42,15 +42,15 @@ int PrevPageButton(Context_t *ctx){
 }
 
 int ButtonHandlerMainMenu(Context_t *ctx){
-    if (ctx->kHeld & KEY_R)
+    if (ctx->kHeld & HidNpadButton_R)
         return NextPageButton(ctx);
-    if (ctx->kHeld & KEY_L)
+    if (ctx->kHeld & HidNpadButton_L)
         return PrevPageButton(ctx);
-    if (ctx->kHeld & KEY_Y)
+    if (ctx->kHeld & HidNpadButton_Y)
         return ShowSideFilterMenu(ctx);
-    if (ctx->kHeld & KEY_X)
+    if (ctx->kHeld & HidNpadButton_X)
         return ShowSideTargetMenu(ctx);
-    if (ctx->kHeld & KEY_MINUS)
+    if (ctx->kHeld & HidNpadButton_Minus)
         return ShowSideQueueMenu(ctx);
 
     return 0;
