@@ -41,6 +41,8 @@ typedef struct { // We are not going to display like half of these
     //char *lastUpdated;
     //int dlCount;
     //int likeCount;
+    char *imgLink;
+    char *thumbLink;
     int themeCount;
     int isDlDone;
     ThemeInfo_t *themes;

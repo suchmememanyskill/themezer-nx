@@ -307,12 +307,16 @@ int ParsePackList(PackInfo_t **storage, int size, cJSON *packList){
         cJSON *creator = cJSON_GetObjectItemCaseSensitive(pack, "creator");
         cJSON *display_name = cJSON_GetObjectItemCaseSensitive(creator, "username");
         cJSON *name = cJSON_GetObjectItemCaseSensitive(pack, "name");
+        cJSON *original = cJSON_GetObjectItemCaseSensitive(pack, "previewJpgLargeUrl");
+        cJSON *thumb = cJSON_GetObjectItemCaseSensitive(pack, "previewJpgSmallUrl");
         cJSON *themes = cJSON_GetObjectItemCaseSensitive(pack, "themes");
 
         if (cJSON_IsString(name) && cJSON_IsString(display_name) && cJSON_IsArray(themes)){
             
             packs[i].creator = SanitizeString(display_name->valuestring);
             packs[i].name = SanitizeString(name->valuestring);
+            packs[i].imgLink = SanitizeString(original->valuestring);
+            packs[i].thumbLink = SanitizeString(thumb->valuestring);
             int arraySize = cJSON_GetArraySize(themes);
             printf("Index: %d, size: %d\n", i, arraySize);
             packs[i].themeCount = arraySize;
@@ -334,9 +338,8 @@ void FillThemesWithPacks(RequestInfo_t *rI){
     for (int i = 0; i < rI->curPageItemCount; i++){
         rI->themes[i].name = CopyTextUtil(rI->packs[i].name);
         rI->themes[i].creator = CopyTextUtil(rI->packs[i].creator);
-        rI->themes[i].thumbLink = CopyTextUtil(rI->packs[i].themes[0].thumbLink);
-        rI->themes[i].downloadLink = CopyTextUtil(rI->packs[i].themes[0].downloadLink);
-        rI->themes[i].imgLink = CopyTextUtil(rI->packs[i].themes[0].imgLink);
+        rI->themes[i].thumbLink = CopyTextUtil(rI->packs[i].thumbLink);
+        rI->themes[i].imgLink = CopyTextUtil(rI->packs[i].imgLink);
     }
 }
 
