@@ -119,7 +119,7 @@ CURL *CreateRequest(char *url, get_request_t *data){
         curl_easy_setopt(curl, CURLOPT_URL, url);
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
-        curl_easy_setopt(curl, CURLOPT_USERAGENT, "themezer-nx"
+        curl_easy_setopt(curl, CURLOPT_USERAGENT, "themezer-nx");
 
         data->buffer = malloc(CHUNK_SIZE);
         data->buflen = CHUNK_SIZE;
