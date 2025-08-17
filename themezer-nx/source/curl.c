@@ -46,8 +46,8 @@ char *GenLink(RequestInfo_t *rI){
     char *query;
     if (rI->target <= 7)
     {
-        // query($target:Target,$page:PositiveInt,$limit:PositiveInt,$sort:ItemSort,$order:SortOrder,$query:String){themes(target:$target,page:$page,limit:$limit,sort:$sort,order:$order,query:$query){nodes{hexId,creator{username},name,description,updatedAt,downloadCount,saveCount,target,previewJpgLargeUrl,previewJpgSmallUrl}}}
-        query = "query%28%24target%3ATarget%2C%24page%3APositiveInt%2C%24limit%3APositiveInt%2C%24sort%3AItemSort%2C%24order%3ASortOrder%2C%24query%3AString%29%7Bthemes%28target%3A%24target%2Cpage%3A%24page%2Climit%3A%24limit%2Csort%3A%24sort%2Corder%3A%24order%2Cquery%3A%24query%29%7Bnodes%7BhexId%2Ccreator%7Busername%7D%2Cname%2Cdescription%2CupdatedAt%2CdownloadCount%2CsaveCount%2Ctarget%2CpreviewJpgLargeUrl%2CpreviewJpgSmallUrl%7DpageInfo%7BitemCount%2Climit%2Cpage%2CpageCount%7D%7D%7D";
+        // query($page:PositiveInt,$limit:PositiveInt,$sort:ItemSort,$order:SortOrder,$query:String){packs(page:$page,limit:$limit,sort:$sort,order:$order,query:$query){nodes{hexId,creator{username},name,description,updatedAt,downloadCount,saveCount,previewJpgLargeUrl,previewJpgSmallUrl,themes{hexId,creator{username},name,description,updatedAt,downloadCount,saveCount,target,previewJpgLargeUrl,previewJpgSmallUrl,downloadUrl}}pageInfo{itemCount,limit,page,pageCount}}}
+        query = "query%28%24page%3APositiveInt%2C%24limit%3APositiveInt%2C%24sort%3AItemSort%2C%24order%3ASortOrder%2C%24query%3AString%29%7Bpacks%28page%3A%24page%2Climit%3A%24limit%2Csort%3A%24sort%2Corder%3A%24order%2Cquery%3A%24query%29%7Bnodes%7BhexId%2Ccreator%7Busername%7D%2Cname%2Cdescription%2CupdatedAt%2CdownloadCount%2CsaveCount%2CpreviewJpgLargeUrl%2CpreviewJpgSmallUrl%2Cthemes%7BhexId%2Ccreator%7Busername%7D%2Cname%2Cdescription%2CupdatedAt%2CdownloadCount%2CsaveCount%2Ctarget%2CpreviewJpgLargeUrl%2CpreviewJpgSmallUrl%2CdownloadUrl%7D%7DpageInfo%7BitemCount%2Climit%2Cpage%2CpageCount%7D%7D%7D";
         snprintf(variables, 0x400,"{\"target\":%s,\"page\":%d,\"limit\":%d,\"sort\":\"%s\",\"order\":\"%s\",\"query\":%s}",\
             requestTarget, rI->page, rI->limit, requestSorts[rI->sort], requestOrders[rI->order], searchQuoted);
     }
@@ -220,6 +220,7 @@ void FreeThemes(RequestInfo_t *rI){
         NNFREE(rI->themes[i].lastUpdated);
         NNFREE(rI->themes[i].imgLink);
         NNFREE(rI->themes[i].thumbLink);
+        NNFREE(rI->themes[i].downloadLink);
         if (rI->themes[i].preview && rI->packs == NULL)
             SDL_DestroyTexture(rI->themes[i].preview);
         
@@ -234,6 +235,7 @@ void FreeThemes(RequestInfo_t *rI){
                 free(rI->packs[i].themes[j].lastUpdated);
                 free(rI->packs[i].themes[j].imgLink);
                 free(rI->packs[i].themes[j].thumbLink);
+                free(rI->packs[i].themes[j].downloadLink);
                 if  (rI->packs[i].themes[j].preview)
                     SDL_DestroyTexture(rI->packs[i].themes[j].preview);
             }
@@ -263,6 +265,7 @@ int ParseThemeList(ThemeInfo_t **storage, int size, cJSON *themesList){
         cJSON *like_count = cJSON_GetObjectItemCaseSensitive(theme, "saveCount");
         cJSON *original = cJSON_GetObjectItemCaseSensitive(theme, "previewJpgLargeUrl");
         cJSON *thumb = cJSON_GetObjectItemCaseSensitive(theme, "previewJpgSmallUrl");
+        cJSON *download = cJSON_GetObjectItemCaseSensitive(theme, "downloadUrl");
         cJSON *target = cJSON_GetObjectItemCaseSensitive(theme, "target");
 
         if (cJSON_IsNumber(dl_count) && cJSON_IsNumber(like_count) && cJSON_IsString(last_updated) && (cJSON_IsString(description) || cJSON_IsNull(description)) &&\
@@ -280,6 +283,7 @@ int ParseThemeList(ThemeInfo_t **storage, int size, cJSON *themesList){
             themes[i].id = CopyTextUtil(id->valuestring);
             themes[i].imgLink = CopyTextUtil(original->valuestring);
             themes[i].thumbLink = CopyTextUtil(thumb->valuestring);
+            themes[i].downloadLink = CopyTextUtil(download->valuestring);
             themes[i].target = GetIndexOfStrArr(requestTargets, 7, target->valuestring);
         }
         else {
@@ -331,6 +335,7 @@ void FillThemesWithPacks(RequestInfo_t *rI){
         rI->themes[i].name = CopyTextUtil(rI->packs[i].name);
         rI->themes[i].creator = CopyTextUtil(rI->packs[i].creator);
         rI->themes[i].thumbLink = CopyTextUtil(rI->packs[i].themes[0].thumbLink);
+        rI->themes[i].downloadLink = CopyTextUtil(rI->packs[i].themes[0].downloadLink);
         rI->themes[i].imgLink = CopyTextUtil(rI->packs[i].themes[0].imgLink);
     }
 }

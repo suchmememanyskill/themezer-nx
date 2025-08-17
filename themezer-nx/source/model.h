@@ -26,6 +26,7 @@ typedef struct {
     char *lastUpdated;
     char *imgLink;
     char *thumbLink;
+    char *downloadLink;
     int dlCount;
     int likeCount;
     int target;
