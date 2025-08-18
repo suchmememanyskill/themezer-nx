@@ -28,14 +28,7 @@ const char* GetThemeInstallerPath(){
 }
 
 char *GetThemePath(const char *creator, const char *themeName, const char *themeType){
-	char *typePath = CopyTextArgsUtil("/Themes/ThemezerNX/%s", themeType);
-	mkdir(typePath, 0777);
-	char *creatorPath = CopyTextArgsUtil("%s/%s", typePath, creator);
-	mkdir(creatorPath, 0777);
-	char *themePath = CopyTextArgsUtil("%s/%s.nxtheme", creatorPath, themeName);
-	free(creatorPath);
-	free(typePath);
-	return themePath;
+	return CopyTextArgsUtil("/Themes/ThemezerNX/%s - %s - %s.nxtheme", themeType, creator, themeName);
 }
 
 char* showKeyboard(char* message, char* initialText, u64 size){

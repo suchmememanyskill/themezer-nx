@@ -362,3 +362,6 @@ themezer-nx/build/
 *.bat
 
 themezer-nx/assets/
+
+.vscode/
+.idea/

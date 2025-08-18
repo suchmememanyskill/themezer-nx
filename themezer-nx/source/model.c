@@ -15,7 +15,7 @@ const char *targetOptions[] = {
 const char *sortOptions[] = {
     "Last Updated",
     "Downloads",
-    "Likes",
+    "Saves",
     "Creation Date"
 };
 
