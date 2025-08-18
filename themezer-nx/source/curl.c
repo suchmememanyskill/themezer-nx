@@ -46,15 +46,15 @@ char *GenLink(RequestInfo_t *rI){
     char *query;
     if (rI->target <= 7)
     {
-        // query($page:PositiveInt,$limit:PositiveInt,$sort:ItemSort,$order:SortOrder,$query:String){packs(page:$page,limit:$limit,sort:$sort,order:$order,query:$query){nodes{hexId,creator{username},name,description,updatedAt,downloadCount,saveCount,previewJpgLargeUrl,previewJpgSmallUrl,themes{hexId,creator{username},name,description,updatedAt,downloadCount,saveCount,target,previewJpgLargeUrl,previewJpgSmallUrl,downloadUrl}}pageInfo{itemCount,limit,page,pageCount}}}
-        query = "query%28%24page%3APositiveInt%2C%24limit%3APositiveInt%2C%24sort%3AItemSort%2C%24order%3ASortOrder%2C%24query%3AString%29%7Bpacks%28page%3A%24page%2Climit%3A%24limit%2Csort%3A%24sort%2Corder%3A%24order%2Cquery%3A%24query%29%7Bnodes%7BhexId%2Ccreator%7Busername%7D%2Cname%2Cdescription%2CupdatedAt%2CdownloadCount%2CsaveCount%2CpreviewJpgLargeUrl%2CpreviewJpgSmallUrl%2Cthemes%7BhexId%2Ccreator%7Busername%7D%2Cname%2Cdescription%2CupdatedAt%2CdownloadCount%2CsaveCount%2Ctarget%2CpreviewJpgLargeUrl%2CpreviewJpgSmallUrl%2CdownloadUrl%7D%7DpageInfo%7BitemCount%2Climit%2Cpage%2CpageCount%7D%7D%7D";
+        // query($target:Target,$page:PositiveInt,$limit:PositiveInt,$sort:ItemSort,$order:SortOrder,$query:String){switchThemes(target:$target,page:$page,limit:$limit,sort:$sort,order:$order,query:$query){nodes{hexId,creator{username},name,description,updatedAt,downloadCount,saveCount,target,previewJpgLargeUrl,previewJpgSmallUrl,downloadUrl}pageInfo{itemCount,limit,page,pageCount}}}
+        query = "query%28%24target%3ATarget%2C%24page%3APositiveInt%2C%24limit%3APositiveInt%2C%24sort%3AItemSort%2C%24order%3ASortOrder%2C%24query%3AString%29%7BswitchThemes%28target%3A%24target%2Cpage%3A%24page%2Climit%3A%24limit%2Csort%3A%24sort%2Corder%3A%24order%2Cquery%3A%24query%29%7Bnodes%7BhexId%2Ccreator%7Busername%7D%2Cname%2Cdescription%2CupdatedAt%2CdownloadCount%2CsaveCount%2Ctarget%2CpreviewJpgLargeUrl%2CpreviewJpgSmallUrl%2CdownloadUrl%7DpageInfo%7BitemCount%2Climit%2Cpage%2CpageCount%7D%7D%7D";
         snprintf(variables, 0x400,"{\"target\":%s,\"page\":%d,\"limit\":%d,\"sort\":\"%s\",\"order\":\"%s\",\"query\":%s}",\
             requestTarget, rI->page, rI->limit, requestSorts[rI->sort], requestOrders[rI->order], searchQuoted);
     }
     else if (rI->target == 8)
     {
-        // query($page:PositiveInt,$limit:PositiveInt,$sort:ItemSort,$order:SortOrder,$query:String){packs(page:$page,limit:$limit,sort:$sort,order:$order,query:$query){nodes{hexId,creator{username},name,description,updatedAt,downloadCount,saveCount,themes{hexId,creator{username},name,description,updatedAt,downloadCount,saveCount,target,previewJpgLargeUrl,previewJpgSmallUrl}}pageInfo{itemCount,limit,page,pageCount}}}
-        query = "query%28%24page%3APositiveInt%2C%24limit%3APositiveInt%2C%24sort%3AItemSort%2C%24order%3ASortOrder%2C%24query%3AString%29%7Bpacks%28page%3A%24page%2Climit%3A%24limit%2Csort%3A%24sort%2Corder%3A%24order%2Cquery%3A%24query%29%7Bnodes%7BhexId%2Ccreator%7Busername%7D%2Cname%2Cdescription%2CupdatedAt%2CdownloadCount%2CsaveCount%2Cthemes%7BhexId%2Ccreator%7Busername%7D%2Cname%2Cdescription%2CupdatedAt%2CdownloadCount%2CsaveCount%2Ctarget%2CpreviewJpgLargeUrl%2CpreviewJpgSmallUrl%7D%7DpageInfo%7BitemCount%2Climit%2Cpage%2CpageCount%7D%7D%7D";
+        // query($page:PositiveInt,$limit:PositiveInt,$sort:ItemSort,$order:SortOrder,$query:String){switchPacks(page:$page,limit:$limit,sort:$sort,order:$order,query:$query){nodes{hexId,creator{username},name,description,updatedAt,downloadCount,saveCount,previewJpgLargeUrl,previewJpgSmallUrl,themes{hexId,creator{username},name,description,updatedAt,downloadCount,saveCount,target,previewJpgLargeUrl,previewJpgSmallUrl,downloadUrl}}pageInfo{itemCount,limit,page,pageCount}}}
+        query = "query%28%24page%3APositiveInt%2C%24limit%3APositiveInt%2C%24sort%3AItemSort%2C%24order%3ASortOrder%2C%24query%3AString%29%7BswitchPacks%28page%3A%24page%2Climit%3A%24limit%2Csort%3A%24sort%2Corder%3A%24order%2Cquery%3A%24query%29%7Bnodes%7BhexId%2Ccreator%7Busername%7D%2Cname%2Cdescription%2CupdatedAt%2CdownloadCount%2CsaveCount%2CpreviewJpgLargeUrl%2CpreviewJpgSmallUrl%2Cthemes%7BhexId%2Ccreator%7Busername%7D%2Cname%2Cdescription%2CupdatedAt%2CdownloadCount%2CsaveCount%2Ctarget%2CpreviewJpgLargeUrl%2CpreviewJpgSmallUrl%2CdownloadUrl%7D%7DpageInfo%7BitemCount%2Climit%2Cpage%2CpageCount%7D%7D%7D";
         snprintf(variables, 0x400, "{\"page\":%d,\"limit\":%d,\"sort\":\"%s\",\"order\":\"%s\",\"query\":%s}",\
             rI->page, rI->limit, requestSorts[rI->sort], requestOrders[rI->order], searchQuoted);
     }
@@ -253,7 +253,6 @@ int ParseThemeList(ThemeInfo_t **storage, int size, cJSON *themesList){
 
     cJSON *theme = NULL;
     int i = 0;
-    
     cJSON_ArrayForEach(theme, themesList){
         cJSON *id = cJSON_GetObjectItemCaseSensitive(theme, "hexId");
         cJSON *creator = cJSON_GetObjectItemCaseSensitive(theme, "creator");
@@ -269,8 +268,8 @@ int ParseThemeList(ThemeInfo_t **storage, int size, cJSON *themesList){
         cJSON *target = cJSON_GetObjectItemCaseSensitive(theme, "target");
 
         if (cJSON_IsNumber(dl_count) && cJSON_IsNumber(like_count) && cJSON_IsString(last_updated) && (cJSON_IsString(description) || cJSON_IsNull(description)) &&\
-        cJSON_IsString(name) && cJSON_IsString(display_name) && cJSON_IsString(id) && cJSON_IsString(original) && cJSON_IsString(thumb) && cJSON_IsString(target)){
-                    
+        cJSON_IsString(name) && cJSON_IsString(display_name) && cJSON_IsString(id) && cJSON_IsString(original) && cJSON_IsString(thumb) && cJSON_IsString(target) &&
+        cJSON_IsString(download) && cJSON_IsString(target)){
             themes[i].dlCount = dl_count->valueint;
             themes[i].likeCount = like_count->valueint;
                     
@@ -311,12 +310,12 @@ int ParsePackList(PackInfo_t **storage, int size, cJSON *packList){
         cJSON *thumb = cJSON_GetObjectItemCaseSensitive(pack, "previewJpgSmallUrl");
         cJSON *themes = cJSON_GetObjectItemCaseSensitive(pack, "themes");
 
-        if (cJSON_IsString(name) && cJSON_IsString(display_name) && cJSON_IsArray(themes)){
-            
+        if (cJSON_IsString(name) && cJSON_IsString(display_name) && cJSON_IsArray(themes) &&
+            cJSON_IsString(original) && cJSON_IsString(thumb)){
             packs[i].creator = SanitizeString(display_name->valuestring);
             packs[i].name = SanitizeString(name->valuestring);
-            packs[i].imgLink = SanitizeString(original->valuestring);
-            packs[i].thumbLink = SanitizeString(thumb->valuestring);
+            packs[i].imgLink = CopyTextUtil(original->valuestring);
+            packs[i].thumbLink = CopyTextUtil(thumb->valuestring);
             int arraySize = cJSON_GetArraySize(themes);
             printf("Index: %d, size: %d\n", i, arraySize);
             packs[i].themeCount = arraySize;
@@ -356,9 +355,9 @@ int GenThemeArray(RequestInfo_t *rI){
     if (data){
         cJSON *queryData;
         if (rI->target != 8){
-            queryData = cJSON_GetObjectItemCaseSensitive(data, "themes");
+            queryData = cJSON_GetObjectItemCaseSensitive(data, "switchThemes");
         } else {
-            queryData = cJSON_GetObjectItemCaseSensitive(data, "packs");
+            queryData = cJSON_GetObjectItemCaseSensitive(data, "switchPacks");
         }
         cJSON *pagination = cJSON_GetObjectItemCaseSensitive(queryData, "pageInfo");
         cJSON *page_count = cJSON_GetObjectItemCaseSensitive(pagination, "pageCount");
@@ -368,8 +367,11 @@ int GenThemeArray(RequestInfo_t *rI){
             rI->pageCount = page_count->valueint;
             rI->itemCount = item_count->valueint;
         }
-        else
+        else 
+        {
             return -1;
+        }
+            
 
 
         FreeThemes(rI);
@@ -487,7 +489,7 @@ int HandleDownloadQueue(Context_t *ctx){
             curl_easy_getinfo(e, CURLINFO_PRIVATE, &index);
 
             if (msg->data.result != CURLE_OK){
-                printf("Something went fucky with the downloader, index %d, %d\n", *index, msg->data.result);
+                printf("Something went wrong with the downloader, index %d, %d\n", *index, msg->data.result);
             }
             else {
                 printf("Download of index %d finished!\n", *index);

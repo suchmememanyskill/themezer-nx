@@ -36,7 +36,7 @@ int DownloadThemeButton(Context_t *ctx){
     RenderShapeLinkList(render);
 
     char *path = GetThemePath(target->creator, target->name, targetOptions[target->target]);
-    int res = DownloadThemeFromUrl(target->id, path);
+    int res = DownloadThemeFromUrl(CopyTextUtil(target->downloadLink), path);
 
     if (res){
         ShapeLinkAdd(&render, ButtonCreate(POS(0, 0, SCREEN_W, SCREEN_H), COLOR(0, 0, 0, 0), COLOR(0, 0, 0, 0), COLOR(0, 0, 0, 0), COLOR(0, 0, 0, 0), 0, ButtonStyleFlat, NULL, NULL, exitFunc), ButtonType);
