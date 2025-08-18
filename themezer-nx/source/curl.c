@@ -519,7 +519,7 @@ void SetDefaultsRequestInfo(RequestInfo_t *rI){
     rI->target = 7;
     rI->limit = 20;
     rI->page = 1;
-    rI->sort = 0;
+    rI->sort = 3;
     rI->order = 0;
     rI->search = CopyTextUtil("");
     rI->maxDls = 6;
