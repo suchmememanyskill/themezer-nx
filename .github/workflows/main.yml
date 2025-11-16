@@ -16,6 +16,7 @@ jobs:
         
     - name: Building ThemezerNX
       run: |
+        pacman -Syu
         make -j$(nproc)
         
     - uses: actions/upload-artifact@master
