@@ -1,6 +1,9 @@
 name: Build Themezer-nx
 
-on: [push]
+on:
+  push:
+  workflow_dispatch:
+
 jobs:
   ThemezerNX:
     runs-on: ubuntu-latest
