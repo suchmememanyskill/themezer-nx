@@ -34,6 +34,7 @@ const char *requestOrders[] = {
 static int GetPreviewUrls(cJSON *item, const char *fieldName, cJSON **original, cJSON **thumb);
 static int ParseThemeList(ThemeInfo_t **storage, int size, cJSON *themesList);
 int GetIndexOfStrArr(const char **toSearch, int limit, const char *search);
+static int ShowApiError(cJSON *root);
 
 static char *GenLookupByQuickIdLink(const char *quickId){
     static char request[0x1200];
@@ -306,7 +307,7 @@ int MakeJsonRequest(char *url, cJSON **response){
 
     if (!(res = curl_easy_perform(curl))){
         if (response != NULL){
-            *response = cJSON_Parse(req.buffer);
+            *response = cJSON_Parse((const char *)req.buffer);
         }
 
         printf("Buffer: %s\n", req.buffer);
@@ -323,41 +324,82 @@ int MakeDownloadRequest(char *url, char *path){
     CURL *curl = CreateRequest(url, &req);
 
     if (!(res = curl_easy_perform(curl))){
-        FILE *fp = fopen(path, "wb");
-        if (fp){
-            fwrite(req.buffer, req.len, 1, fp);
-            fclose(fp);
+        long responseCode = 0;
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &responseCode);
+
+        cJSON *json = cJSON_Parse((const char *)req.buffer);
+        int apiError = ShowApiError(json);
+
+        if (apiError){
+            res = apiError;
+        }
+        else if (responseCode >= 400){
+            char *message = CopyTextArgsUtil("The themezer server returned HTTP status %ld.", responseCode);
+            ShapeLinker_t *menu = CreateBaseMessagePopup("Download Error", message);
+            free(message);
+            ShapeLinkAdd(&menu, ButtonCreate(POS(250, 470, 780, 50), COLOR_MAINBG, COLOR_CURSORPRESS, COLOR_WHITE, COLOR_CURSOR, 0, ButtonStyleBottomStrip, "Ok", FONT_TEXT[FSize28], exitFunc), ButtonType);
+            MakeMenu(menu, ButtonHandlerBExit, NULL);
+            ShapeLinkDispose(&menu);
+            res = (int)responseCode;
         }
         else {
-            res = 1;
+            FILE *fp = fopen(path, "wb");
+            if (fp){
+                fwrite(req.buffer, req.len, 1, fp);
+                fclose(fp);
+            }
+            else {
+                res = 1;
+            }
         }
+
+        cJSON_Delete(json);
     }
 
+    free(req.buffer);
     curl_easy_cleanup(curl);
     return res;
 }
 
-int hasError(cJSON *root){
+static void ShowRequestErrorPopup(char *title, char *message){
+    ShapeLinker_t *menu = CreateBaseMessagePopup(title, message);
+    ShapeLinkAdd(&menu, ButtonCreate(POS(250, 470, 780, 50), COLOR_MAINBG, COLOR_CURSORPRESS, COLOR_WHITE, COLOR_CURSOR, 0, ButtonStyleBottomStrip, "Ok", FONT_TEXT[FSize28], exitFunc), ButtonType);
+    MakeMenu(menu, ButtonHandlerBExit, NULL);
+    ShapeLinkDispose(&menu);
+}
+
+static int ShowApiError(cJSON *root){
+    if (!root)
+        return 0;
+
+    cJSON *statusCode = cJSON_GetObjectItemCaseSensitive(root, "statusCode");
+    cJSON *messageItem = cJSON_GetObjectItemCaseSensitive(root, "message");
+
+    if (cJSON_IsNumber(statusCode) && cJSON_IsString(messageItem)){
+        ShowRequestErrorPopup("Error during request", messageItem->valuestring);
+        return statusCode->valueint ? statusCode->valueint : 1;
+    }
+
     cJSON *err = cJSON_GetObjectItemCaseSensitive(root, "errors");
 
     if (err){
         cJSON *errItem = cJSON_GetArrayItem(err, 0);
         if (errItem){
-            cJSON *messageItem = cJSON_GetObjectItemCaseSensitive(errItem, "message");
+            messageItem = cJSON_GetObjectItemCaseSensitive(errItem, "message");
             char *message = cJSON_GetStringValue(messageItem);
             
-            if (message){
-                ShapeLinker_t *menu = CreateBaseMessagePopup("Error during request", message);
-                ShapeLinkAdd(&menu, ButtonCreate(POS(250, 470, 780, 50), COLOR_MAINBG, COLOR_CURSORPRESS, COLOR_WHITE, COLOR_CURSOR, 0, ButtonStyleBottomStrip, "Ok", FONT_TEXT[FSize28], exitFunc), ButtonType);
-                MakeMenu(menu, ButtonHandlerBExit, NULL);
-                ShapeLinkDispose(&menu);
-            }
+            if (message)
+                ShowRequestErrorPopup("Error during request", message);
         }
 
         return 1;
     }
 
     return 0;
+}
+
+int hasError(cJSON *root){
+    return ShowApiError(root) ? 1 : 0;
 }
 
 int DownloadThemeFromUrl(char *url, char *path){

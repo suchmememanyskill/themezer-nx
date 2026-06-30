@@ -54,7 +54,7 @@ ROMFS		:=  romfs
 ARCH	:=	-march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE
 
 CFLAGS	:=	-g -Wall -O3 -ffunction-sections \
-			$(ARCH) $(DEFINES) -DAPP_VERSION="$(APP_VERSION)"
+			$(ARCH) $(DEFINES) -DAPP_VERSION=\"$(APP_VERSION)\"
 
 CFLAGS	+=	$(INCLUDE) -D__SWITCH__ `sdl2-config --cflags`
 
