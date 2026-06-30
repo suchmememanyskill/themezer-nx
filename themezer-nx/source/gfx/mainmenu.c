@@ -1,5 +1,97 @@
 #include "gfx.h"
 
+static bool mainMenuReturnToBoot = false;
+static bool mainMenuLoaded = false;
+
+enum {
+    MAIN_MENU_LOAD_NOT_STARTED = 0,
+    MAIN_MENU_LOAD_RUNNING,
+    MAIN_MENU_LOAD_DONE,
+    MAIN_MENU_LOAD_ERROR,
+};
+
+static volatile int mainMenuLoadState = MAIN_MENU_LOAD_NOT_STARTED;
+static int mainMenuLoadResult = 0;
+static Thread mainMenuLoadThread;
+static bool mainMenuLoadThreadCreated = false;
+
+static void AddMainMenuBackground(ShapeLinker_t **out, RequestInfo_t *rI);
+static int LoadMainMenuData(RequestInfo_t *rI);
+static void ShowMainMenuLoadError(int res);
+
+void ResetMainMenuReturnToBoot(void){
+    mainMenuReturnToBoot = false;
+}
+
+bool ConsumeMainMenuReturnToBoot(void){
+    bool returnToBoot = mainMenuReturnToBoot;
+    mainMenuReturnToBoot = false;
+    return returnToBoot;
+}
+
+static int LoadMainMenuData(RequestInfo_t *rI){
+    return MakeJsonRequest(GenLink(rI), &rI->response);
+}
+
+static void LoadMainMenuDataThread(void *arg){
+    mainMenuLoadResult = LoadMainMenuData(arg);
+    mainMenuLoadState = (mainMenuLoadResult == 0) ? MAIN_MENU_LOAD_DONE : MAIN_MENU_LOAD_ERROR;
+}
+
+static int StartMainMenuLoad(RequestInfo_t *rI){
+    if (mainMenuLoaded || mainMenuLoadState == MAIN_MENU_LOAD_RUNNING)
+        return 0;
+
+    if (mainMenuLoadThreadCreated && mainMenuLoadState != MAIN_MENU_LOAD_RUNNING){
+        threadWaitForExit(&mainMenuLoadThread);
+        threadClose(&mainMenuLoadThread);
+        mainMenuLoadThreadCreated = false;
+    }
+
+    mainMenuLoadResult = 0;
+    mainMenuLoadState = MAIN_MENU_LOAD_RUNNING;
+    Result res = threadCreate(&mainMenuLoadThread, LoadMainMenuDataThread, rI, NULL, 0x40000, 0x2B, -2);
+    if (R_FAILED(res)){
+        mainMenuLoadResult = (int)res;
+        mainMenuLoadState = MAIN_MENU_LOAD_ERROR;
+        return mainMenuLoadResult;
+    }
+
+    res = threadStart(&mainMenuLoadThread);
+    if (R_FAILED(res)){
+        threadClose(&mainMenuLoadThread);
+        mainMenuLoadResult = (int)res;
+        mainMenuLoadState = MAIN_MENU_LOAD_ERROR;
+        return mainMenuLoadResult;
+    }
+
+    mainMenuLoadThreadCreated = true;
+    return 0;
+}
+
+static void CloseFinishedMainMenuLoadThread(void){
+    if (!mainMenuLoadThreadCreated || mainMenuLoadState == MAIN_MENU_LOAD_RUNNING)
+        return;
+
+    threadWaitForExit(&mainMenuLoadThread);
+    threadClose(&mainMenuLoadThread);
+    mainMenuLoadThreadCreated = false;
+}
+
+static void ShowMainMenuLoadError(int res){
+    if (res > 0){
+        ShowConnErrMenu(res);
+        return;
+    }
+
+    char *message = CopyTextArgsUtil("Loading browse data failed. Error Code: %d", res);
+    ShapeLinker_t *menu = CreateBaseMessagePopup("Browse Load Failed", message);
+    ShapeLinkAdd(&menu, ButtonCreate(POS(250, 470, 780, 50), COLOR_MAINBG, COLOR_CURSORPRESS, COLOR_WHITE, COLOR_CURSOR, 0, ButtonStyleBottomStrip, "Ok", FONT_TEXT[FSize28], exitFunc), ButtonType);
+    MakeMenu(menu, ButtonHandlerBExit, NULL);
+    ShapeLinkDispose(&menu);
+    free(message);
+}
+
 int lennify(Context_t *ctx){
     static int lenny = false;
     if (!lenny){
@@ -43,21 +135,73 @@ int PrevPageButton(Context_t *ctx){
     return 0;
 }
 
+static int BackToBootButton(Context_t *ctx){
+    (void)ctx;
+    mainMenuReturnToBoot = true;
+    return -1;
+}
+
+static bool IsMainMenuReady(void){
+    return mainMenuLoaded;
+}
+
+static int ShowSideTargetMenuIfReady(Context_t *ctx){
+    return IsMainMenuReady() ? ShowSideTargetMenu(ctx) : 0;
+}
+
+static int ShowSideFilterMenuIfReady(Context_t *ctx){
+    return IsMainMenuReady() ? ShowSideFilterMenu(ctx) : 0;
+}
+
+static int ShowSideQueueMenuIfReady(Context_t *ctx){
+    return IsMainMenuReady() ? ShowSideQueueMenu(ctx) : 0;
+}
+
 int ButtonHandlerMainMenu(Context_t *ctx){
-    if (ctx->kHeld & (HidNpadButton_ZL | HidNpadButton_ZR))
-        return ShowQuickIdLookup(ctx);
+    if (ctx->kDown & HidNpadButton_B){
+        mainMenuReturnToBoot = true;
+        return -1;
+    }
     if (ctx->kHeld & HidNpadButton_R)
         return NextPageButton(ctx);
     if (ctx->kHeld & HidNpadButton_L)
         return PrevPageButton(ctx);
-    if (ctx->kHeld & HidNpadButton_Y)
+    if (IsMainMenuReady() && ctx->kHeld & HidNpadButton_Y)
         return ShowSideFilterMenu(ctx);
-    if (ctx->kHeld & HidNpadButton_X)
+    if (IsMainMenuReady() && ctx->kHeld & HidNpadButton_X)
         return ShowSideTargetMenu(ctx);
-    if (ctx->kHeld & HidNpadButton_Minus)
+    if (IsMainMenuReady() && ctx->kHeld & HidNpadButton_Minus)
         return ShowSideQueueMenu(ctx);
 
     return 0;
+}
+
+static int HandleMainMenuFrame(Context_t *ctx){
+    if (mainMenuLoadState == MAIN_MENU_LOAD_DONE){
+        RequestInfo_t *rI = ShapeLinkFind(ctx->all, DataType)->item;
+        CloseFinishedMainMenuLoadThread();
+        mainMenuLoadResult = GenThemeArray(rI);
+        if (mainMenuLoadResult != 0){
+            mainMenuLoadState = MAIN_MENU_LOAD_ERROR;
+            return HandleMainMenuFrame(ctx);
+        }
+
+        ShapeLinker_t *items = GenListItemList(rI);
+        AddThemeImagesToDownloadQueue(rI, true);
+        UpdateMainMenuUI(ctx, rI, items);
+        mainMenuLoaded = true;
+        mainMenuLoadState = MAIN_MENU_LOAD_NOT_STARTED;
+    }
+    else if (mainMenuLoadState == MAIN_MENU_LOAD_ERROR){
+        int res = mainMenuLoadResult;
+        CloseFinishedMainMenuLoadThread();
+        mainMenuLoadState = MAIN_MENU_LOAD_NOT_STARTED;
+        ShowMainMenuLoadError(res);
+        mainMenuReturnToBoot = true;
+        return -1;
+    }
+
+    return HandleDownloadQueue(ctx);
 }
 
 static SDL_Rect FitThumbHashBackground(SDL_Rect area){
@@ -70,32 +214,6 @@ static SDL_Rect FitThumbHashBackground(SDL_Rect area){
     }
 
     return POS(area.x + (area.w - width) / 2, area.y + (area.h - height) / 2, width, height);
-}
-
-static SDL_Rect FitTextureCover(SDL_Texture *texture, SDL_Rect area){
-    SizeInfo_t size = GetTextureSize(texture);
-    if (size.w <= 0 || size.h <= 0)
-        return area;
-
-    int width = area.w;
-    int height = width * size.h / size.w;
-
-    if (height < area.h){
-        height = area.h;
-        width = height * size.w / size.h;
-    }
-
-    return POS(area.x + (area.w - width) / 2, area.y + (area.h - height) / 2, width, height);
-}
-
-ShapeLinker_t *CreateSplashScreen(){
-    ShapeLinker_t *out = NULL;
-
-    ShapeLinkAdd(&out, RectangleCreate(POS(0, 0, SCREEN_W, SCREEN_H), COLOR_MAINBG, 1), RectangleType);
-    if (banner)
-        ShapeLinkAdd(&out, ImageCreate(banner, FitTextureCover(banner, POS(0, 0, SCREEN_W, SCREEN_H)), 0), ImageType);
-
-    return out;
 }
 
 static void AddMainMenuBackground(ShapeLinker_t **out, RequestInfo_t *rI){
@@ -124,7 +242,9 @@ static void AddMainMenuBackground(ShapeLinker_t **out, RequestInfo_t *rI){
 
 ShapeLinker_t *CreateMainMenu(ShapeLinker_t *listItems, RequestInfo_t *rI) { 
     ShapeLinker_t *out = NULL;
-    int quickIdButtonX = 240;
+    int backButtonX = 0;
+    int targetButtonX = 120;
+    int searchButtonX = 240;
     int queueButtonX = 360;
     SDL_Color accentColor = GetMainMenuAccentColor(rI);
 
@@ -140,20 +260,20 @@ ShapeLinker_t *CreateMainMenu(ShapeLinker_t *listItems, RequestInfo_t *rI) {
     ShapeLinkAdd(&out, ImageCreate(moodDown, POS(0, 0, 0, 0), 0), ImageType);
     ShapeLinkAdd(&out, TextCenteredCreate(POS(0, 460, SCREEN_W, 80), " ", COLOR_WHITE, FONT_TEXT[FSize35]), TextCenteredType);
 
+    // BackButton
+    ShapeLinkAdd(&out, ButtonCreate(POS(backButtonX, 0, 120, 60), COLOR_MAIN_TOPBARBUTTONS, accentColor, COLOR_WHITE, COLOR_CURSOR, 0, ButtonStyleBottomStrip, NULL, NULL, BackToBootButton), ButtonType);
+    ShapeLinkAdd(&out, ImageCreate(arrowLIcon, POS(backButtonX + 28, 0, 60, 60), 0), ImageType);
+
     // MenuButton
-    ShapeLinkAdd(&out, ButtonCreate(POS(0, 0, 120, 60), COLOR_MAIN_TOPBARBUTTONS, accentColor, COLOR_WHITE, COLOR_CURSOR, 0, ButtonStyleBottomStrip, NULL, NULL, ShowSideTargetMenu), ButtonType);
-    ShapeLinkAdd(&out, ImageCreate(menuIcon, POS(30, 0, 60, 60), 0), ImageType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(targetButtonX, 0, 120, 60), COLOR_MAIN_TOPBARBUTTONS, accentColor, COLOR_WHITE, COLOR_CURSOR, 0, ButtonStyleBottomStrip, NULL, NULL, ShowSideTargetMenuIfReady), ButtonType);
+    ShapeLinkAdd(&out, ImageCreate(menuIcon, POS(targetButtonX + 30, 0, 60, 60), 0), ImageType);
 
     // SearchButton
-    ShapeLinkAdd(&out, ButtonCreate(POS(120, 0, 120, 60), COLOR_MAIN_TOPBARBUTTONS, accentColor, COLOR_WHITE, COLOR_CURSOR, 0, ButtonStyleBottomStrip, NULL, NULL, ShowSideFilterMenu), ButtonType);
-    ShapeLinkAdd(&out, ImageCreate(searchIcon, POS(150, 0, 60, 60), 0), ImageType);
-
-    // QuickIdButton
-    ShapeLinkAdd(&out, ButtonCreate(POS(quickIdButtonX, 0, 120, 60), COLOR_MAIN_TOPBARBUTTONS, accentColor, COLOR_WHITE, COLOR_CURSOR, 0, ButtonStyleBottomStrip, NULL, NULL, ShowQuickIdLookup), ButtonType);
-    ShapeLinkAdd(&out, ImageCreate(quickIdIcon, POS(quickIdButtonX + 30, 0, 60, 60), 0), ImageType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(searchButtonX, 0, 120, 60), COLOR_MAIN_TOPBARBUTTONS, accentColor, COLOR_WHITE, COLOR_CURSOR, 0, ButtonStyleBottomStrip, NULL, NULL, ShowSideFilterMenuIfReady), ButtonType);
+    ShapeLinkAdd(&out, ImageCreate(searchIcon, POS(searchButtonX + 30, 0, 60, 60), 0), ImageType);
 
     // QueueButton
-    ShapeLinkAdd(&out, ButtonCreate(POS(queueButtonX, 0, 120, 60), COLOR_MAIN_TOPBARBUTTONS, accentColor, COLOR_WHITE, COLOR_CURSOR, 0, ButtonStyleBottomStrip, NULL, NULL, ShowSideQueueMenu), ButtonType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(queueButtonX, 0, 120, 60), COLOR_MAIN_TOPBARBUTTONS, accentColor, COLOR_WHITE, COLOR_CURSOR, 0, ButtonStyleBottomStrip, NULL, NULL, ShowSideQueueMenuIfReady), ButtonType);
     ShapeLinkAdd(&out, ImageCreate(queueIcon, POS(queueButtonX + 30, 0, 60, 60), 0), ImageType);
 
     // LeftArrow
@@ -175,11 +295,10 @@ ShapeLinker_t *CreateMainMenu(ShapeLinker_t *listItems, RequestInfo_t *rI) {
     ShapeLinkAdd(&out, ImageCreate(icon, POS(584, 0, 60, 60), 0), ImageType);
 
     // Glyphs
-    ShapeLinkAdd(&out, GlyphCreate(97, 2, BUTTON_X, COLOR_WHITE, FONT_BTN[FSize20]), GlyphType);
-    ShapeLinkAdd(&out, GlyphCreate(217, 2, BUTTON_Y, COLOR_WHITE, FONT_BTN[FSize20]), GlyphType);
+    ShapeLinkAdd(&out, GlyphCreate(100, 2, BUTTON_B, COLOR_WHITE, FONT_BTN[FSize20]), GlyphType);
+    ShapeLinkAdd(&out, GlyphCreate(217, 2, BUTTON_X, COLOR_WHITE, FONT_BTN[FSize20]), GlyphType);
+    ShapeLinkAdd(&out, GlyphCreate(337, 2, BUTTON_Y, COLOR_WHITE, FONT_BTN[FSize20]), GlyphType);
     ShapeLinkAdd(&out, GlyphCreate(457, 2, BUTTON_MINUS, COLOR_WHITE, FONT_BTN[FSize20]), GlyphType);
-    ShapeLinkAdd(&out, GlyphCreate(243, 2, BUTTON_ZL, COLOR_WHITE, FONT_BTN[FSize20]), GlyphType);
-    ShapeLinkAdd(&out, GlyphCreate(337, 2, BUTTON_ZR, COLOR_WHITE, FONT_BTN[FSize20]), GlyphType);
 
     Glyph_t *leftButtonIcon = GlyphCreate(804, 2, BUTTON_L, COLOR_WHITE, FONT_BTN[FSize20]);
     Glyph_t *rightButtonIcon = GlyphCreate(1256, 2, BUTTON_R, COLOR_WHITE, FONT_BTN[FSize20]);
@@ -195,4 +314,38 @@ ShapeLinker_t *CreateMainMenu(ShapeLinker_t *listItems, RequestInfo_t *rI) {
     ShapeLinkAdd(&out, rightButtonIcon, GlyphType);
 
     return out;
+}
+
+bool RunMainMenu(RequestInfo_t *rI){
+    if (!mainMenuLoaded && mainMenuLoadState == MAIN_MENU_LOAD_DONE){
+        CloseFinishedMainMenuLoadThread();
+        int res = GenThemeArray(rI);
+        if (res != 0){
+            mainMenuLoadState = MAIN_MENU_LOAD_NOT_STARTED;
+            ShowMainMenuLoadError(res);
+            return true;
+        }
+
+        AddThemeImagesToDownloadQueue(rI, true);
+        mainMenuLoaded = true;
+        mainMenuLoadState = MAIN_MENU_LOAD_NOT_STARTED;
+    }
+    else if (!mainMenuLoaded && mainMenuLoadState == MAIN_MENU_LOAD_ERROR){
+        int res = mainMenuLoadResult;
+        CloseFinishedMainMenuLoadThread();
+        mainMenuLoadState = MAIN_MENU_LOAD_NOT_STARTED;
+        ShowMainMenuLoadError(res);
+        return true;
+    }
+
+    if (!mainMenuLoaded)
+        StartMainMenuLoad(rI);
+
+    ResetMainMenuReturnToBoot();
+    ShapeLinker_t *items = mainMenuLoaded ? GenListItemList(rI) : NULL;
+    ShapeLinker_t *mainMenu = CreateMainMenu(items, rI);
+    MakeMenu(mainMenu, ButtonHandlerMainMenu, HandleMainMenuFrame);
+    ShapeLinkDispose(&mainMenu);
+
+    return ConsumeMainMenuReturnToBoot();
 }

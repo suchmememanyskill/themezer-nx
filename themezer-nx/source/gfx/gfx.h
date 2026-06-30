@@ -6,7 +6,7 @@
 #include "../utils.h"
 #include "../curl.h"
 
-extern SDL_Texture *menuIcon, *searchIcon, *queueIcon, *arrowLIcon, *arrowRIcon, *LeImg, *XIcon, *logo, *icon, *banner, *bgTile, *themeBgThumbHash, *packBgThumbHash, *moodDown, *quickIdIcon;
+extern SDL_Texture *menuIcon, *searchIcon, *queueIcon, *arrowLIcon, *arrowRIcon, *LeImg, *XIcon, *logo, *icon, *banner, *bgTile, *themeBgThumbHash, *packBgThumbHash, *moodDown, *browseIcon, *quickIdIcon;
 extern SDL_Texture *targetIcons[];
 extern SDL_Texture *sortIcons[];
 extern SDL_Texture *orderIcons[];
@@ -55,5 +55,12 @@ int ShowQuickIdLookup(Context_t *ctx);
 
 // mainmenu.c
 int ButtonHandlerMainMenu(Context_t *ctx);
-ShapeLinker_t *CreateSplashScreen();
+int ButtonHandlerBootMenu(Context_t *ctx);
+ShapeLinker_t *CreateBootMenu(void);
 ShapeLinker_t *CreateMainMenu(ShapeLinker_t *listItems, RequestInfo_t *rI);
+bool RunMainMenu(RequestInfo_t *rI);
+void ResetBootMenuAction(void);
+int ConsumeBootMenuAction(void);
+bool ConsumeBootMenuBrowseRequested(void);
+void ResetMainMenuReturnToBoot(void);
+bool ConsumeMainMenuReturnToBoot(void);

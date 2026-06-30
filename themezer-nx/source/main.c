@@ -14,19 +14,6 @@
 
 #include "curl.h"
 
-ShapeLinker_t *errorMenu(char *message, int errLoc){
-    ShapeLinker_t *out = NULL;
-    
-    ShapeLinkAdd(&out, ButtonCreate(POS(0, 50, SCREEN_W, SCREEN_H - 50), COLOR_MAINBG, COLOR_CURSORPRESS, COLOR_WHITE, COLOR_MAINBG, 0, ButtonStyleFlat, "Could not connect to the Themezer. Press A to exit", FONT_TEXT[FSize35], exitFunc), ButtonType);
-    if (message)
-        ShapeLinkAdd(&out, TextCenteredCreate(POS(0, SCREEN_H - 50, 1280, 50), message, COLOR_RED, FONT_TEXT[FSize30]), TextCenteredType);
-
-    bool ShowErrMenu = (errLoc == 1 && cURLErrBuff[0] != '\0');
-    ShapeLinkAdd(&out, ButtonCreate(POS(0, 0, SCREEN_W, 50), COLOR_TOPBAR, COLOR_RED, COLOR_WHITE, COLOR_TOPBARCURSOR, (ShowErrMenu) ? 0 : BUTTON_DISABLED, ButtonStyleTopStrip, (ShowErrMenu) ? "Details" : "Details Unavailable", FONT_TEXT[FSize30], ShowCurlError), ButtonType);
-
-    return out;
-}
-
 ShapeLinker_t *WarnMenu(){
     ShapeLinker_t *warnMenu = CreateBaseMessagePopup("Warning!", "The NXThemes Installer could not be found!\nMake sure it is in the following location:\n\nsd:/switch/NXThemesInstaller.nro");
 
@@ -53,10 +40,8 @@ int main(int argc, char* argv[])
     RequestInfo_t rI = {0, 0, 0, 0, 0, 0, "", 0, 0, 0, NULL, NULL, {NULL, 0, true}, NULL};
     SetDefaultsRequestInfo(&rI);
     rI.target = 0;
-    ShapeLinker_t *items = NULL;
 
     AllocateInstalls(7);
-    int res;
 
     mkdir("/Themes/", 0777);
     mkdir("/Themes/ThemezerNX", 0777);
@@ -71,36 +56,20 @@ int main(int argc, char* argv[])
         SetInstallButtonState(1);
     }
 
-    char *errMessage = NULL;
-    int errLoc = 0;
+    while (true){
+        ResetBootMenuAction();
+        ShapeLinker_t *bootMenu = CreateBootMenu();
+        MakeMenu(bootMenu, ButtonHandlerBootMenu, NULL);
+        ShapeLinkDispose(&bootMenu);
 
-    ShapeLinker_t *loadingMenu = CreateSplashScreen();
-    RenderShapeLinkList(loadingMenu);
-    ShapeLinkDispose(&loadingMenu);
+        if (!ConsumeBootMenuBrowseRequested())
+            break;
 
-    if (!(res = MakeJsonRequest(GenLink(&rI), &rI.response))){
-        if (!(res = GenThemeArray(&rI))){
-            items = GenListItemList(&rI);
-            AddThemeImagesToDownloadQueue(&rI, true);
-        }
-        else {
-            printf(CopyTextArgsUtil("Theme array gen failed, %d", res));
-            errMessage = CopyTextArgsUtil("Parsing Json data failed! Error Code: %d", res);
-        }       
+        if (!RunMainMenu(&rI))
+            break;
     }
-    else {
-        printf("Request failed");
-        errMessage = CopyTextArgsUtil("Themezer request failed! Error Code: %d", res);
-        errLoc = 1;
-    }
-        
-    ShapeLinker_t *mainMenu = (items != NULL) ? CreateMainMenu(items, &rI) : errorMenu(errMessage, errLoc);
-    MakeMenu(mainMenu, ButtonHandlerMainMenu, (items != NULL) ? HandleDownloadQueue : NULL);
-    ShapeLinkDispose(&mainMenu);
     
     FreeThemes(&rI);
-
-    NNFREE(errMessage);
 
     if (themeInstallerLocation){
         if (CheckIfInstallsQueued()){
