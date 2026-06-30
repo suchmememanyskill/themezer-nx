@@ -6,6 +6,8 @@
 
 extern const char *targetOptions[], *sortOptions[], *orderOptions[];
 
+#define SORT_OPTION_COUNT 6
+
 typedef struct {
     int sort;
     int order;

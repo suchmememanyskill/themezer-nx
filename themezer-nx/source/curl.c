@@ -20,6 +20,8 @@ const char *requestTargets[] = {
 };
 
 const char *requestSorts[] = {
+    "RISING",
+    "TRENDING",
     "CREATED",
     "UPDATED",
     "DOWNLOADS",
