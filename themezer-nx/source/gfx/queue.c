@@ -56,7 +56,7 @@ ShapeLinker_t *CreateSideQueueMenu(){
 
 int ShowSideQueueMenu(Context_t *ctx){
     ShapeLinker_t *menu = CreateSideQueueMenu();
-    MakeMenu(menu, ButtonHandlerBExit, NULL);
+    MakeMenu(menu, ButtonHandlerBMinusExit, NULL);
     ShapeLinkDispose(&menu);
 
     return 0;

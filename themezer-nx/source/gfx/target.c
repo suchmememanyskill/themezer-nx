@@ -24,7 +24,7 @@ ShapeLinker_t *CreateSideTargetMenu(RequestInfo_t *rI){
 int ShowSideTargetMenu(Context_t *ctx){
     RequestInfo_t *rI = ShapeLinkFind(ctx->all, DataType)->item;
     ShapeLinker_t *menu = CreateSideTargetMenu(rI);
-    Context_t menuCtx = MakeMenu(menu, ButtonHandlerBExit, NULL);
+    Context_t menuCtx = MakeMenu(menu, ButtonHandlerBXExit, NULL);
 
     if (menuCtx.selected->type == ListViewType && menuCtx.origin == OriginFunction){
         ListView_t *lv = menuCtx.selected->item;

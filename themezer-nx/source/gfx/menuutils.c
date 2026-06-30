@@ -156,6 +156,25 @@ int ButtonHandlerBExit(Context_t *ctx){
     return 0;
 }
 
+static int ButtonHandlerExitOnMask(Context_t *ctx, u64 buttonMask){
+    if (ctx->kDown & buttonMask)
+        return -1;
+
+    return 0;
+}
+
+int ButtonHandlerBXExit(Context_t *ctx){
+    return ButtonHandlerExitOnMask(ctx, HidNpadButton_B | HidNpadButton_X);
+}
+
+int ButtonHandlerBYExit(Context_t *ctx){
+    return ButtonHandlerExitOnMask(ctx, HidNpadButton_B | HidNpadButton_Y);
+}
+
+int ButtonHandlerBMinusExit(Context_t *ctx){
+    return ButtonHandlerExitOnMask(ctx, HidNpadButton_B | HidNpadButton_Minus);
+}
+
 ShapeLinker_t *CreateSideBaseMenu(char *menuName){ // Count: 7
     ShapeLinker_t *out = NULL;
 

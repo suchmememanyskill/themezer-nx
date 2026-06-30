@@ -147,7 +147,7 @@ int ShowSideFilterMenu(Context_t *ctx){
     RequestInfo_t *rI = ShapeLinkFind(ctx->all, DataType)->item;
     FilterOptions_t options = {rI->sort, rI->order, CopyTextUtil(rI->search)};
     ShapeLinker_t *menu = CreateSideFilterMenu(&options);
-    Context_t menuCtx = MakeMenu(menu, ButtonHandlerBExit, NULL);
+    Context_t menuCtx = MakeMenu(menu, ButtonHandlerBYExit, NULL);
     ShapeLinkDispose(&menu);
     
     if (menuCtx.curOffset == 18 && menuCtx.origin == OriginFunction){
