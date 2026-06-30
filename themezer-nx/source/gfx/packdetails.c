@@ -28,7 +28,7 @@ static ShapeLinker_t *CreatePackProgressMenu(char *message, TextCentered_t **pro
 }
 
 static int DownloadPackTheme(ThemeInfo_t *theme){
-    char *path = GetThemePath(theme->creator, theme->name, GetPackThemeTargetLabel(theme));
+    char *path = GetThemePath(theme, GetPackThemeTargetLabel(theme));
     int res = DownloadThemeFromUrl(CopyTextUtil(theme->downloadLink), path);
     free(path);
 
@@ -36,7 +36,7 @@ static int DownloadPackTheme(ThemeInfo_t *theme){
 }
 
 static int EnsurePackThemeDownloaded(ThemeInfo_t *theme){
-    char *path = GetThemePath(theme->creator, theme->name, GetPackThemeTargetLabel(theme));
+    char *path = GetThemePath(theme, GetPackThemeTargetLabel(theme));
     int res = 0;
 
     if (access(path, F_OK) == -1)
@@ -210,7 +210,7 @@ int InstallPackButton(Context_t *ctx){
             continue;
         }
 
-        char *path = GetThemePath(theme->creator, theme->name, GetPackThemeTargetLabel(theme));
+        char *path = GetThemePath(theme, GetPackThemeTargetLabel(theme));
         SetInstallSlot(theme->target, path);
         free(path);
         queued++;

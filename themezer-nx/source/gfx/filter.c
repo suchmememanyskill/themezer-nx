@@ -72,7 +72,7 @@ int SideMenuSetSearch(Context_t *ctx){
         if (options->search != NULL)
             free(options->search);
 
-        options->search = SanitizeString(out);
+        options->search = CopyTextUtil(out);
         free(text->text.text);
         text->text.text = CopyTextArgsUtil("Search: %s", options->search);
     }

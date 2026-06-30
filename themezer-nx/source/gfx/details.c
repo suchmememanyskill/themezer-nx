@@ -124,7 +124,7 @@ int DownloadThemeButton(Context_t *ctx){
 
     RenderShapeLinkList(render);
 
-    char *path = GetThemePath(target->creator, target->name, GetThemeTargetLabel(target));
+    char *path = GetThemePath(target, GetThemeTargetLabel(target));
     int res = DownloadThemeFromUrl(CopyTextUtil(target->downloadLink), path);
 
     if (res){
@@ -150,7 +150,7 @@ int InstallThemeButton(Context_t *ctx){
 
     RequestInfo_t *rI = ShapeLinkFind(ctx->all, DataType)->item;
     ThemeInfo_t *target = rI->themes;
-    char *path = GetThemePath(target->creator, target->name, GetThemeTargetLabel(target));
+    char *path = GetThemePath(target, GetThemeTargetLabel(target));
 
     int res = !(access(path, F_OK) != -1);
 

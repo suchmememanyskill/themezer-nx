@@ -35,11 +35,13 @@ static int GetPreviewUrls(cJSON *item, const char *fieldName, cJSON **original, 
 static int ParseThemeList(ThemeInfo_t **storage, int size, cJSON *themesList);
 int GetIndexOfStrArr(const char **toSearch, int limit, const char *search);
 static int ShowApiError(cJSON *root);
+static void SetThemePackInfo(ThemeInfo_t *themeInfo, const char *packId, const char *packCreator, const char *packName);
+static char *CopyJsonStringLiteral(const char *text);
 
 static char *GenLookupByQuickIdLink(const char *quickId){
     static char request[0x1200];
     request[0] = '\0';
-    const char *query = "query($quickId:String!){switch{lookupByQuickId(quickId:$quickId){__typename ... on SwitchPack{name creator{username} collageThumbHash collagePreview{jpgHdUrl jpgThumbUrl} themes{hexId creator{username} name description updatedAt downloadCount saveCount target screenshotThumbHash screenshotPreview{jpgHdUrl jpgThumbUrl} downloadUrl}} ... on SwitchTheme{hexId creator{username} name description updatedAt downloadCount saveCount target screenshotThumbHash screenshotPreview{jpgHdUrl jpgThumbUrl} downloadUrl} ... on SwitchRemoteInstallTheme{author createdAt downloadUrl name quickId target}}}}";
+    const char *query = "query($quickId:String!){switch{lookupByQuickId(quickId:$quickId){__typename ... on SwitchPack{hexId name creator{username} collageThumbHash collagePreview{jpgHdUrl jpgThumbUrl} themes{hexId creator{username} name description updatedAt downloadCount saveCount target screenshotThumbHash screenshotPreview{jpgHdUrl jpgThumbUrl} downloadUrl}} ... on SwitchTheme{hexId creator{username} name description updatedAt downloadCount saveCount target screenshotThumbHash screenshotPreview{jpgHdUrl jpgThumbUrl} downloadUrl pack{hexId name creator{username}}} ... on SwitchRemoteInstallTheme{author createdAt downloadUrl name quickId target}}}}";
     char *variables = NULL;
 
     cJSON *variablesJson = cJSON_CreateObject();
@@ -86,6 +88,7 @@ static int ParseTheme(ThemeInfo_t *themeInfo, cJSON *theme){
     cJSON *thumb_hash = cJSON_GetObjectItemCaseSensitive(theme, "screenshotThumbHash");
     cJSON *download = cJSON_GetObjectItemCaseSensitive(theme, "downloadUrl");
     cJSON *target = cJSON_GetObjectItemCaseSensitive(theme, "target");
+    cJSON *pack = cJSON_GetObjectItemCaseSensitive(theme, "pack");
 
     if (!GetPreviewUrls(theme, "screenshotPreview", &original, &thumb) || !cJSON_IsString(thumb_hash) || !cJSON_IsNumber(dl_count) || !cJSON_IsNumber(like_count) || !cJSON_IsString(last_updated) ||
         !(cJSON_IsString(description) || cJSON_IsNull(description)) || !cJSON_IsString(name) || !cJSON_IsString(display_name) || !cJSON_IsString(id) || !cJSON_IsString(download) || !cJSON_IsString(target)){
@@ -98,14 +101,24 @@ static int ParseTheme(ThemeInfo_t *themeInfo, cJSON *theme){
     if (!cJSON_IsNull(description))
         themeInfo->description = CopyTextUtil(description->valuestring);
 
-    themeInfo->name = SanitizeString(name->valuestring);
-    themeInfo->creator = SanitizeString(display_name->valuestring);
+    themeInfo->name = SafeFilenameText(name->valuestring);
+    themeInfo->creator = SafeFilenameText(display_name->valuestring);
     themeInfo->id = CopyTextUtil(id->valuestring);
     themeInfo->imgLink = CopyTextUtil(original->valuestring);
     themeInfo->thumbLink = CopyTextUtil(thumb->valuestring);
     themeInfo->downloadLink = CopyTextUtil(download->valuestring);
     themeInfo->target = GetIndexOfStrArr(requestTargets, 7, target->valuestring);
     themeInfo->preview = CreateThumbHashTexture(thumb_hash->valuestring);
+
+    if (cJSON_IsObject(pack)){
+        cJSON *packId = cJSON_GetObjectItemCaseSensitive(pack, "hexId");
+        cJSON *packCreator = cJSON_GetObjectItemCaseSensitive(pack, "creator");
+        cJSON *packCreatorName = cJSON_GetObjectItemCaseSensitive(packCreator, "username");
+        cJSON *packName = cJSON_GetObjectItemCaseSensitive(pack, "name");
+
+        if (cJSON_IsString(packId) && cJSON_IsString(packCreatorName) && cJSON_IsString(packName))
+            SetThemePackInfo(themeInfo, packId->valuestring, packCreatorName->valuestring, packName->valuestring);
+    }
 
     return 0;
 }
@@ -121,8 +134,8 @@ static int ParseRemoteTheme(ThemeInfo_t *themeInfo, cJSON *theme){
     if (!cJSON_IsString(author) || !cJSON_IsString(created_at) || !cJSON_IsString(download) || !cJSON_IsString(name) || !cJSON_IsString(quick_id) || !cJSON_IsString(target))
         return 1;
 
-    themeInfo->creator = SanitizeString(author->valuestring);
-    themeInfo->name = SanitizeString(name->valuestring);
+    themeInfo->creator = SafeFilenameText(author->valuestring);
+    themeInfo->name = SafeFilenameText(name->valuestring);
     themeInfo->id = CopyTextUtil(quick_id->valuestring);
     themeInfo->lastUpdated = CopyTextUtil(created_at->valuestring);
     themeInfo->downloadLink = CopyTextUtil(download->valuestring);
@@ -131,7 +144,18 @@ static int ParseRemoteTheme(ThemeInfo_t *themeInfo, cJSON *theme){
     return 0;
 }
 
+static void SetThemePackInfo(ThemeInfo_t *themeInfo, const char *packId, const char *packCreator, const char *packName){
+    NNFREE(themeInfo->packId);
+    NNFREE(themeInfo->packCreator);
+    NNFREE(themeInfo->packName);
+
+    themeInfo->packId = CopyTextUtil(packId);
+    themeInfo->packCreator = SafeFilenameText(packCreator);
+    themeInfo->packName = SafeFilenameText(packName);
+}
+
 static int ParsePack(PackInfo_t *packInfo, cJSON *pack){
+    cJSON *id = cJSON_GetObjectItemCaseSensitive(pack, "hexId");
     cJSON *creator = cJSON_GetObjectItemCaseSensitive(pack, "creator");
     cJSON *display_name = cJSON_GetObjectItemCaseSensitive(creator, "username");
     cJSON *name = cJSON_GetObjectItemCaseSensitive(pack, "name");
@@ -140,11 +164,12 @@ static int ParsePack(PackInfo_t *packInfo, cJSON *pack){
     cJSON *thumb_hash = cJSON_GetObjectItemCaseSensitive(pack, "collageThumbHash");
     cJSON *themes = cJSON_GetObjectItemCaseSensitive(pack, "themes");
 
-    if (!GetPreviewUrls(pack, "collagePreview", &original, &thumb) || !cJSON_IsString(thumb_hash) || !cJSON_IsString(name) || !cJSON_IsString(display_name) || !cJSON_IsArray(themes))
+    if (!GetPreviewUrls(pack, "collagePreview", &original, &thumb) || !cJSON_IsString(thumb_hash) || !cJSON_IsString(id) || !cJSON_IsString(name) || !cJSON_IsString(display_name) || !cJSON_IsArray(themes))
         return 1;
 
-    packInfo->creator = SanitizeString(display_name->valuestring);
-    packInfo->name = SanitizeString(name->valuestring);
+    packInfo->id = CopyTextUtil(id->valuestring);
+    packInfo->creator = SafeFilenameText(display_name->valuestring);
+    packInfo->name = SafeFilenameText(name->valuestring);
     packInfo->imgLink = CopyTextUtil(original->valuestring);
     packInfo->thumbLink = CopyTextUtil(thumb->valuestring);
     packInfo->preview = CreateThumbHashTexture(thumb_hash->valuestring);
@@ -153,13 +178,16 @@ static int ParsePack(PackInfo_t *packInfo, cJSON *pack){
     if (ParseThemeList(&packInfo->themes, packInfo->themeCount, themes))
         return 2;
 
+    for (int i = 0; i < packInfo->themeCount; i++)
+        SetThemePackInfo(&packInfo->themes[i], packInfo->id, packInfo->creator, packInfo->name);
+
     return 0;
 }
 
 char *GenLink(RequestInfo_t *rI){
     char *searchQuoted;
     if (rI->search[0] != '\0')
-        searchQuoted = CopyTextArgsUtil("\"%s\"", rI->search);
+        searchQuoted = CopyJsonStringLiteral(rI->search);
     else 
         searchQuoted = CopyTextUtil("null");
 
@@ -169,13 +197,13 @@ char *GenLink(RequestInfo_t *rI){
     else 
         requestTarget = CopyTextArgsUtil("\"%s\"",requestTargets[rI->target - 1]);
     
-    static char request[0x600];
+    static char request[0x1000];
     char variables[0x400];
-    char *query;
+    char *query = NULL;
     if (rI->target >= 1)
     {
         // query($target:Target,$paginationArgs:PaginationInput,$sort:ItemSort,$order:SortOrder,$query:String){switch{themes(target:$target,paginationArgs:$paginationArgs,sort:$sort,order:$order,query:$query){nodes{hexId creator{username} name description updatedAt downloadCount saveCount target screenshotThumbHash screenshotPreview{jpgHdUrl jpgThumbUrl} downloadUrl}pageInfo{itemCount limit page pageCount}}}}
-        query = "query%28%24target%3ATarget%2C%24paginationArgs%3APaginationInput%2C%24sort%3AItemSort%2C%24order%3ASortOrder%2C%24query%3AString%29%7Bswitch%7Bthemes%28target%3A%24target%2CpaginationArgs%3A%24paginationArgs%2Csort%3A%24sort%2Corder%3A%24order%2Cquery%3A%24query%29%7Bnodes%7BhexId%20creator%7Busername%7D%20name%20description%20updatedAt%20downloadCount%20saveCount%20target%20screenshotThumbHash%20screenshotPreview%7BjpgHdUrl%20jpgThumbUrl%7D%20downloadUrl%7DpageInfo%7BitemCount%20limit%20page%20pageCount%7D%7D%7D%7D";
+        query = "query%28%24target%3ATarget%2C%24paginationArgs%3APaginationInput%2C%24sort%3AItemSort%2C%24order%3ASortOrder%2C%24query%3AString%29%7Bswitch%7Bthemes%28target%3A%24target%2CpaginationArgs%3A%24paginationArgs%2Csort%3A%24sort%2Corder%3A%24order%2Cquery%3A%24query%29%7Bnodes%7BhexId%20creator%7Busername%7D%20name%20description%20updatedAt%20downloadCount%20saveCount%20target%20screenshotThumbHash%20screenshotPreview%7BjpgHdUrl%20jpgThumbUrl%7D%20downloadUrl%20pack%7BhexId%20name%20creator%7Busername%7D%7D%7DpageInfo%7BitemCount%20limit%20page%20pageCount%7D%7D%7D%7D";
         snprintf(variables, 0x400,"{\"target\":%s,\"paginationArgs\":{\"page\":%d,\"limit\":%d},\"sort\":\"%s\",\"order\":\"%s\",\"query\":%s}",\
             requestTarget, rI->page, rI->limit, requestSorts[rI->sort], requestOrders[rI->order], searchQuoted);
     }
@@ -192,12 +220,12 @@ char *GenLink(RequestInfo_t *rI){
         char *output = curl_easy_escape(curl, variables, 0);
         if(output) {
             printf("Encoded: %s\n", output);
-            snprintf(request, 0x600, "https://api.themezer.net/graphql?query=%s&variables=%s", query, output);
+            snprintf(request, sizeof(request), "https://api.themezer.net/graphql?query=%s&variables=%s", query, output);
             curl_free(output);
         }
         else 
         {
-            snprintf(request, 0x600, "https://api.themezer.net/graphql?query=%s&variables=%s", query, variables);
+            snprintf(request, sizeof(request), "https://api.themezer.net/graphql?query=%s&variables=%s", query, variables);
         }
         curl_easy_cleanup(curl);
     }
@@ -216,6 +244,52 @@ int GetIndexOfStrArr(const char **toSearch, int limit, const char *search){
     }
 
     return 0;
+}
+
+static char *CopyJsonStringLiteral(const char *text){
+    int len = 2;
+    const unsigned char *c = (const unsigned char *)text;
+    while (*c){
+        if (*c == '"' || *c == '\\' || *c < 32)
+            len += 2;
+        else
+            len++;
+        c++;
+    }
+
+    char *out = calloc(1, len + 1);
+    char *temp = out;
+    *temp++ = '"';
+
+    c = (const unsigned char *)text;
+    while (*c){
+        if (*c == '"' || *c == '\\'){
+            *temp++ = '\\';
+            *temp++ = *c;
+        }
+        else if (*c == '\n'){
+            *temp++ = '\\';
+            *temp++ = 'n';
+        }
+        else if (*c == '\r'){
+            *temp++ = '\\';
+            *temp++ = 'r';
+        }
+        else if (*c == '\t'){
+            *temp++ = '\\';
+            *temp++ = 't';
+        }
+        else if (*c < 32){
+            *temp++ = ' ';
+        }
+        else {
+            *temp++ = *c;
+        }
+        c++;
+    }
+
+    *temp++ = '"';
+    return out;
 }
 
 static int GetPreviewUrls(cJSON *item, const char *fieldName, cJSON **original, cJSON **thumb){
@@ -406,7 +480,10 @@ int DownloadThemeFromUrl(char *url, char *path){
     int res = 1;
 
     if (url){
-        res = MakeDownloadRequest(url, path);
+        if (EnsureDirectoryForFile(path))
+            res = 1;
+        else
+            res = MakeDownloadRequest(url, path);
         free(url);
     }
 
@@ -429,10 +506,14 @@ void FreeThemes(RequestInfo_t *rI){
         NNFREE(rI->themes[i].imgLink);
         NNFREE(rI->themes[i].thumbLink);
         NNFREE(rI->themes[i].downloadLink);
+        NNFREE(rI->themes[i].packId);
+        NNFREE(rI->themes[i].packCreator);
+        NNFREE(rI->themes[i].packName);
         if (rI->themes[i].preview && rI->packs == NULL)
             SDL_DestroyTexture(rI->themes[i].preview);
         
         if (rI->packs != NULL){
+            free(rI->packs[i].id);
             free(rI->packs[i].creator);
             free(rI->packs[i].name);
             if (rI->packs[i].preview)
@@ -446,6 +527,9 @@ void FreeThemes(RequestInfo_t *rI){
                 free(rI->packs[i].themes[j].imgLink);
                 free(rI->packs[i].themes[j].thumbLink);
                 free(rI->packs[i].themes[j].downloadLink);
+                free(rI->packs[i].themes[j].packId);
+                free(rI->packs[i].themes[j].packCreator);
+                free(rI->packs[i].themes[j].packName);
                 if  (rI->packs[i].themes[j].preview)
                     SDL_DestroyTexture(rI->packs[i].themes[j].preview);
             }
@@ -757,8 +841,9 @@ int HandleDownloadQueue(Context_t *ctx){
         while ((msg = curl_multi_info_read(rI->tInfo.transferer, &msgs_left))){
             if (msg->msg == CURLMSG_DONE){
                 CURL *e = msg->easy_handle;
-                int *index;
-                curl_easy_getinfo(e, CURLINFO_PRIVATE, &index);
+                char *privateData = NULL;
+                curl_easy_getinfo(e, CURLINFO_PRIVATE, &privateData);
+                int *index = (int *)privateData;
 
                 if (msg->data.result != CURLE_OK){
                     printf("Something went wrong with the downloader, index %d, %d\n", *index, msg->data.result);

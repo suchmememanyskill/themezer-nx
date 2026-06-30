@@ -27,6 +27,9 @@ typedef struct {
     char *imgLink;
     char *thumbLink;
     char *downloadLink;
+    char *packId;
+    char *packCreator;
+    char *packName;
     int dlCount;
     int likeCount;
     int target;
@@ -34,7 +37,7 @@ typedef struct {
 } ThemeInfo_t;
 
 typedef struct { // We are not going to display like half of these
-    //char *id;
+    char *id;
     char *creator;
     char *name;
     //char *description;

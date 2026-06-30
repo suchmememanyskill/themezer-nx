@@ -4,6 +4,7 @@
 #include <JAGL.h>
 #include <unistd.h>
 #include <sys/stat.h> 
+#include <errno.h>
 #include "model.h"
 
 typedef struct {
@@ -27,8 +28,49 @@ const char* GetThemeInstallerPath(){
 	return NULL;
 }
 
-char *GetThemePath(const char *creator, const char *themeName, const char *themeType){
-	return CopyTextArgsUtil("/Themes/ThemezerNX/%s - %s - %s.nxtheme", themeType, creator, themeName);
+int EnsureDirectoryForFile(const char *path){
+	char *dir = CopyTextUtil(path);
+	char *lastSlash = strrchr(dir, '/');
+	int res = 0;
+
+	if (lastSlash != NULL && lastSlash != dir){
+		*lastSlash = '\0';
+		res = mkdir(dir, 0777);
+		if (res && errno == EEXIST)
+			res = 0;
+	}
+
+	free(dir);
+	return res;
+}
+
+char *GetThemePath(const ThemeInfo_t *theme, const char *themeType){
+	char *themeName = SafeFilenameText(theme->name);
+	char *creator = SafeFilenameText(theme->creator);
+	char *themeTypeSafe = SafeFilenameText(themeType);
+	char *themeId = SafeFilenameText(theme->id);
+	char *fileName = CopyTextArgsUtil("%s by %s (%s-%s).nxtheme", themeName, creator, themeTypeSafe, themeId);
+	char *path = NULL;
+
+	if (theme->packId && theme->packName && theme->packCreator){
+		char *packName = SafeFilenameText(theme->packName);
+		char *packCreator = SafeFilenameText(theme->packCreator);
+		char *packId = SafeFilenameText(theme->packId);
+		path = CopyTextArgsUtil("/Themes/ThemezerNX/%s by %s (%s)/%s", packName, packCreator, packId, fileName);
+		free(packName);
+		free(packCreator);
+		free(packId);
+	}
+	else {
+		path = CopyTextArgsUtil("/Themes/ThemezerNX/%s", fileName);
+	}
+
+	free(themeName);
+	free(creator);
+	free(themeTypeSafe);
+	free(themeId);
+	free(fileName);
+	return path;
 }
 
 char* showKeyboard(char* message, char* initialText, u64 size){
@@ -68,21 +110,44 @@ int isStringNullOrEmpty(const char *in){
 	return 1;
 }
 
-char *SanitizeString(const char *name)
+char *SafeFilenameText(const char *name)
 {
-	const char* forbiddenChars = "/?<>\\:*|\".,";
+	const char* forbiddenChars = "\\~#*{}/:<>?|\",";
+	if (!name)
+		return CopyTextUtil("_");
 
 	char *src = calloc(strlen(name) + 1, 1);
 	const char *c = name;
 	char *src_temp = src;
+	bool lastWasSpace = true;
 	while (*c)
 	{
-		if (!strchr(forbiddenChars, *c) && *c >= 32 && *c <= 126){
-			*src_temp = *c;
+		char out = 0;
+		if (*c == ' ' || (*c >= 9 && *c <= 13)){
+			if (!lastWasSpace)
+				out = ' ';
+			lastWasSpace = true;
+		}
+		else if (strchr(forbiddenChars, *c) || *c < 32 || *c > 126){
+			out = '_';
+			lastWasSpace = false;
+		}
+		else {
+			out = *c;
+			lastWasSpace = false;
+		}
+
+		if (out){
+			*src_temp = out;
 			src_temp++;
 		}
 			
 		c++;
+	}
+
+	while (src_temp > src && *(src_temp - 1) == ' '){
+		src_temp--;
+		*src_temp = '\0';
 	}
 
 	if (!src[0]){
