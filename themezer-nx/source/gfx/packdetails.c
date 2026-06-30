@@ -262,7 +262,7 @@ int ShowPackDetails(Context_t *ctx){
     RequestInfo_t *rI = ShapeLinkFind(ctx->all, DataType)->item;
     // target = -1 (not 0): prevents ThemeSelect from treating these as a pack listing and
     // recursively calling ShowPackDetails with a NULL packs array
-    RequestInfo_t customRI = {12, -1, 0, 0, 0, 0, NULL, 0, 0, rI->packs[gv->highlight].themeCount, NULL, rI->packs[gv->highlight].themes, {NULL, 0, NULL, 1}, NULL};
+    RequestInfo_t customRI = {12, -1, 0, 0, 0, 0, NULL, 0, 0, rI->packs[gv->highlight].themeCount, NULL, rI->packs[gv->highlight].themes, {NULL, 0, 1}, NULL};
 
     printf("Showing pack details...\nCount: %d\nEntry: %d\n", rI->packs[gv->highlight].themeCount, gv->highlight);
 

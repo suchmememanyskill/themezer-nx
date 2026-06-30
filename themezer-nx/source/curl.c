@@ -39,6 +39,51 @@ int GetIndexOfStrArr(const char **toSearch, int limit, const char *search);
 static int ShowApiError(cJSON *root);
 static void SetThemePackInfo(ThemeInfo_t *themeInfo, const char *packId, const char *packCreator, const char *packName);
 static char *CopyJsonStringLiteral(const char *text);
+static CURLM *GetTransferer(void);
+static CURLcode PerformRequest(CURL *curl);
+static void CleanupActiveTransferQueue(RequestInfo_t *except);
+static void HandleCompletedTransfer(Transfer_t *transfer, CURLcode result, Context_t *ctx);
+static bool AreTransfersFinished(RequestInfo_t *rI);
+
+static CURLM *sTransferer = NULL;
+static RequestInfo_t *sActiveTransferQueue = NULL;
+
+int InitCurlSession(void){
+    if (sTransferer)
+        return 0;
+
+    sTransferer = curl_multi_init();
+    if (!sTransferer)
+        return 1;
+
+    curl_multi_setopt(sTransferer, CURLMOPT_MAXCONNECTS, 12L);
+    curl_multi_setopt(sTransferer, CURLMOPT_MAX_TOTAL_CONNECTIONS, 12L);
+    curl_multi_setopt(sTransferer, CURLMOPT_MAX_HOST_CONNECTIONS, 12L);
+    curl_multi_setopt(sTransferer, CURLMOPT_PIPELINING, CURLPIPE_MULTIPLEX);
+    return 0;
+}
+
+void CleanupCurlSession(void){
+    CleanupActiveTransferQueue(NULL);
+
+    if (!sTransferer)
+        return;
+
+    curl_multi_cleanup(sTransferer);
+    sTransferer = NULL;
+}
+
+static CURLM *GetTransferer(void){
+    if (!sTransferer)
+        InitCurlSession();
+
+    return sTransferer;
+}
+
+static void CleanupActiveTransferQueue(RequestInfo_t *except){
+    if (sActiveTransferQueue && sActiveTransferQueue != except)
+        CleanupTransferInfo(sActiveTransferQueue);
+}
 
 static char *GenLookupByQuickIdLink(const char *quickId){
     static char request[0x1200];
@@ -378,16 +423,18 @@ int MakeJsonRequest(char *url, cJSON **response){
 
     int res;
     CURL *curl = CreateRequest(url, &req);
+    if (!curl)
+        return CURLE_FAILED_INIT;
 
-    if (!(res = curl_easy_perform(curl))){
+    if (!(res = PerformRequest(curl))){
         if (response != NULL){
             *response = cJSON_Parse((const char *)req.buffer);
         }
 
         printf("Buffer: %s\n", req.buffer);
-        free(req.buffer);
     }
 
+    free(req.buffer);
     curl_easy_cleanup(curl);
     return res;
 }
@@ -396,8 +443,10 @@ int MakeDownloadRequest(char *url, char *path){
     get_request_t req = {0};
     int res;
     CURL *curl = CreateRequest(url, &req);
+    if (!curl)
+        return CURLE_FAILED_INIT;
 
-    if (!(res = curl_easy_perform(curl))){
+    if (!(res = PerformRequest(curl))){
         long responseCode = 0;
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &responseCode);
 
@@ -433,6 +482,58 @@ int MakeDownloadRequest(char *url, char *path){
     free(req.buffer);
     curl_easy_cleanup(curl);
     return res;
+}
+
+static CURLcode PerformRequest(CURL *curl){
+    CleanupActiveTransferQueue(NULL);
+
+    CURLM *transferer = GetTransferer();
+    if (!transferer)
+        return CURLE_FAILED_INIT;
+
+    CURLMcode multiRes = curl_multi_add_handle(transferer, curl);
+    if (multiRes != CURLM_OK)
+        return CURLE_FAILED_INIT;
+
+    CURLcode result = CURLE_OK;
+    bool finished = false;
+    int runningHandles = 0;
+
+    do {
+        multiRes = curl_multi_perform(transferer, &runningHandles);
+
+        int msgsLeft = -1;
+        struct CURLMsg *msg;
+        while ((msg = curl_multi_info_read(transferer, &msgsLeft))){
+            if (msg->msg != CURLMSG_DONE)
+                continue;
+
+            if (msg->easy_handle == curl){
+                result = msg->data.result;
+                curl_multi_remove_handle(transferer, curl);
+                finished = true;
+            }
+            else {
+                char *privateData = NULL;
+                curl_easy_getinfo(msg->easy_handle, CURLINFO_PRIVATE, &privateData);
+                if (privateData)
+                    HandleCompletedTransfer((Transfer_t *)privateData, msg->data.result, NULL);
+            }
+        }
+
+        if (finished || multiRes != CURLM_OK)
+            break;
+
+        int numfds = 0;
+        multiRes = curl_multi_wait(transferer, NULL, 0, 1000, &numfds);
+    } while (multiRes == CURLM_OK);
+
+    if (!finished){
+        curl_multi_remove_handle(transferer, curl);
+        return (multiRes == CURLM_OK) ? CURLE_FAILED_INIT : CURLE_BAD_FUNCTION_ARGUMENT;
+    }
+
+    return result;
 }
 
 static void ShowRequestErrorPopup(char *title, char *message){
@@ -749,15 +850,16 @@ ShapeLinker_t *GenListItemList(RequestInfo_t *rI){
 int AddThemeImagesToDownloadQueue(RequestInfo_t *rI, bool thumb){
     if (!rI->curPageItemCount)
         return 0;
+
+    CleanupActiveTransferQueue(rI);
+    if (rI->tInfo.transfers)
+        CleanupTransferInfo(rI);
         
     rI->tInfo.transfers = calloc(sizeof(Transfer_t), rI->curPageItemCount);
-    rI->tInfo.transferer = curl_multi_init();
-    if (!rI->tInfo.transfers || !rI->tInfo.transferer){
+    CURLM *transferer = GetTransferer();
+    if (!rI->tInfo.transfers || !transferer){
         free(rI->tInfo.transfers);
-        if (rI->tInfo.transferer)
-            curl_multi_cleanup(rI->tInfo.transferer);
         rI->tInfo.transfers = NULL;
-        rI->tInfo.transferer = NULL;
         rI->tInfo.queueOffset = 0;
         rI->tInfo.finished = true;
         return 1;
@@ -765,36 +867,46 @@ int AddThemeImagesToDownloadQueue(RequestInfo_t *rI, bool thumb){
 
     rI->tInfo.queueOffset = rI->curPageItemCount;
     rI->tInfo.finished = false;
-    curl_multi_setopt(rI->tInfo.transferer, CURLMOPT_MAXCONNECTS, (long)rI->maxDls);
-    curl_multi_setopt(rI->tInfo.transferer, CURLMOPT_MAX_TOTAL_CONNECTIONS, (long)rI->maxDls);
-    curl_multi_setopt(rI->tInfo.transferer, CURLMOPT_MAX_HOST_CONNECTIONS, (long)rI->maxDls);
-    curl_multi_setopt(rI->tInfo.transferer, CURLMOPT_PIPELINING, CURLPIPE_MULTIPLEX);
+    curl_multi_setopt(transferer, CURLMOPT_MAX_TOTAL_CONNECTIONS, (long)rI->maxDls);
+    curl_multi_setopt(transferer, CURLMOPT_MAX_HOST_CONNECTIONS, (long)rI->maxDls);
+    curl_multi_setopt(transferer, CURLMOPT_PIPELINING, CURLPIPE_MULTIPLEX);
 
     for (int i = 0; i < rI->curPageItemCount; i++){
             rI->tInfo.transfers[i].transfer = CreateRequest((thumb) ? rI->themes[i].thumbLink : rI->themes[i].imgLink, &rI->tInfo.transfers[i].data);
+            rI->tInfo.transfers[i].owner = rI;
             rI->tInfo.transfers[i].index = i;
             if (!rI->tInfo.transfers[i].transfer)
                 continue;
 
-            curl_easy_setopt(rI->tInfo.transfers[i].transfer, CURLOPT_PRIVATE, &rI->tInfo.transfers[i].index); 
-            curl_multi_add_handle(rI->tInfo.transferer, rI->tInfo.transfers[i].transfer);
+            curl_easy_setopt(rI->tInfo.transfers[i].transfer, CURLOPT_PRIVATE, &rI->tInfo.transfers[i]);
+            curl_multi_add_handle(transferer, rI->tInfo.transfers[i].transfer);
     }
 
+    if (AreTransfersFinished(rI)){
+        CleanupTransferInfo(rI);
+        return 1;
+    }
+
+    sActiveTransferQueue = rI;
     return 0;
 }
 
 int CleanupTransferInfo(RequestInfo_t *rI){
-    if (rI->tInfo.finished)
+    if (sActiveTransferQueue == rI)
+        sActiveTransferQueue = NULL;
+
+    if (rI->tInfo.finished && !rI->tInfo.transfers)
         return 0;
 
-    if (!rI->tInfo.transfers && !rI->tInfo.transferer){
+    if (!rI->tInfo.transfers){
         rI->tInfo.finished = true;
         return 0;
     }
 
+    CURLM *transferer = GetTransferer();
     for (int i = 0; i < rI->tInfo.queueOffset; i++){
-        if (rI->tInfo.transferer && rI->tInfo.transfers[i].transfer){
-            curl_multi_remove_handle(rI->tInfo.transferer, rI->tInfo.transfers[i].transfer);
+        if (transferer && rI->tInfo.transfers[i].transfer){
+            curl_multi_remove_handle(transferer, rI->tInfo.transfers[i].transfer);
             curl_easy_cleanup(rI->tInfo.transfers[i].transfer);
         }
 
@@ -802,93 +914,127 @@ int CleanupTransferInfo(RequestInfo_t *rI){
         rI->tInfo.transfers[i].data.buffer = NULL;
     }
 
-    if (rI->tInfo.transferer)
-        curl_multi_cleanup(rI->tInfo.transferer);
     free(rI->tInfo.transfers);
-    rI->tInfo.transferer = NULL;
     rI->tInfo.transfers = NULL;
     rI->tInfo.queueOffset = 0;
     rI->tInfo.finished = true;
     return 0;
 }
 
+static bool AreTransfersFinished(RequestInfo_t *rI){
+    if (!rI || !rI->tInfo.transfers)
+        return true;
+
+    for (int i = 0; i < rI->tInfo.queueOffset; i++){
+        if (rI->tInfo.transfers[i].transfer)
+            return false;
+    }
+
+    return true;
+}
+
+static void HandleCompletedTransfer(Transfer_t *transfer, CURLcode result, Context_t *ctx){
+    if (!transfer || !transfer->owner || !transfer->transfer)
+        return;
+
+    RequestInfo_t *owner = transfer->owner;
+    int index = transfer->index;
+
+    if (result != CURLE_OK){
+        printf("Something went wrong with the downloader, index %d, %d\n", index, result);
+    }
+    else {
+        printf("Download of index %d finished!\n", index);
+        get_request_t *req = &transfer->data;
+        SDL_Texture *oldPreview = owner->themes[index].preview;
+        owner->themes[index].preview = LoadImageMemSDL(req->buffer, req->len);
+        if (owner->packs != NULL)
+            owner->packs[index].preview = owner->themes[index].preview;
+
+        if (ctx){
+            ShapeLinker_t *all = ctx->all;
+            ShapeLinker_t *dataLink = ShapeLinkFind(all, DataType);
+            RequestInfo_t *visibleOwner = dataLink ? dataLink->item : NULL;
+
+            if (visibleOwner == owner){
+                ShapeLinker_t *gvLink = ShapeLinkFind(all, ListGridType);
+                if (gvLink != NULL){
+                    ListGrid_t *gv = gvLink->item;
+                    ListItem_t *li = ShapeLinkOffset(gv->text, index)->item;
+                    li->leftImg = owner->themes[index].preview;
+                }
+                else {
+                    ShapeLinker_t *imageLink = ShapeLinkFind(all, ImageType);
+                    if (imageLink && imageLink->next){
+                        Image_t *img = ShapeLinkFind(imageLink->next, ImageType)->item;
+                        img->texture = owner->themes[index].preview;
+                    }
+                }
+            }
+        }
+
+        if (oldPreview && oldPreview != owner->themes[index].preview)
+            SDL_DestroyTexture(oldPreview);
+    }
+
+    CURLM *transferer = GetTransferer();
+    if (transferer)
+        curl_multi_remove_handle(transferer, transfer->transfer);
+    curl_easy_cleanup(transfer->transfer);
+    transfer->transfer = NULL;
+    free(transfer->data.buffer);
+    transfer->data.buffer = NULL;
+    transfer->data.len = 0;
+    transfer->data.buflen = 0;
+
+    if (AreTransfersFinished(owner))
+        owner->tInfo.finished = true;
+}
+
 int HandleDownloadQueue(Context_t *ctx){
     ShapeLinker_t *all = ctx->all;
     RequestInfo_t *rI = ShapeLinkFind(all, DataType)->item;
-    ShapeLinker_t *gvLink = ShapeLinkFind(all, ListGridType);
-    ListGrid_t *gv = NULL;
-    Image_t *img;
 
-    if (gvLink != NULL)
-        gv = gvLink->item;
-    else {
-        img = ShapeLinkFind(ShapeLinkFind(all, ImageType)->next, ImageType)->item;
+    if (rI->tInfo.finished){
+        CleanupTransferInfo(rI);
+        return 0;
     }
 
-
-    if (rI->tInfo.finished)
-        return 0;
+    CURLM *transferer = GetTransferer();
+    if (!transferer)
+        return 1;
 
     int running_handles = 0;
     int pump_iterations = 0;
     CURLMcode multi_res = CURLM_OK;
 
     do {
-        multi_res = curl_multi_perform(rI->tInfo.transferer, &running_handles);
+        multi_res = curl_multi_perform(transferer, &running_handles);
 
         int msgs_left = -1;
         struct CURLMsg *msg;
-        while ((msg = curl_multi_info_read(rI->tInfo.transferer, &msgs_left))){
+        while ((msg = curl_multi_info_read(transferer, &msgs_left))){
             if (msg->msg == CURLMSG_DONE){
-                CURL *e = msg->easy_handle;
                 char *privateData = NULL;
-                curl_easy_getinfo(e, CURLINFO_PRIVATE, &privateData);
-                int *index = (int *)privateData;
-
-                if (msg->data.result != CURLE_OK){
-                    printf("Something went wrong with the downloader, index %d, %d\n", *index, msg->data.result);
-                }
-                else {
-                    printf("Download of index %d finished!\n", *index);
-                    get_request_t *req = &rI->tInfo.transfers[*index].data;
-                    SDL_Texture *oldPreview = rI->themes[*index].preview;
-                    rI->themes[*index].preview = LoadImageMemSDL(req->buffer, req->len);
-                    if (rI->packs != NULL)
-                        rI->packs[*index].preview = rI->themes[*index].preview;
-                    if (gvLink != NULL){
-                        ListItem_t *li = ShapeLinkOffset(gv->text, *index)->item;
-                        li->leftImg = rI->themes[*index].preview;
-                    }
-                    else {
-                        img->texture = rI->themes[*index].preview;
-                    }
-                    if (oldPreview && oldPreview != rI->themes[*index].preview)
-                        SDL_DestroyTexture(oldPreview);
-                }
-
-                curl_multi_remove_handle(rI->tInfo.transferer, e);
-                curl_easy_cleanup(e);
-                rI->tInfo.transfers[*index].transfer = NULL;
-                free(rI->tInfo.transfers[*index].data.buffer);
-                rI->tInfo.transfers[*index].data.buffer = NULL;
-                rI->tInfo.transfers[*index].data.len = 0;
-                rI->tInfo.transfers[*index].data.buflen = 0;
+                curl_easy_getinfo(msg->easy_handle, CURLINFO_PRIVATE, &privateData);
+                if (privateData)
+                    HandleCompletedTransfer((Transfer_t *)privateData, msg->data.result, ctx);
             }
         }
 
-        if (multi_res != CURLM_OK || !running_handles)
+        if (multi_res != CURLM_OK || rI->tInfo.finished)
             break;
 
         int numfds = 0;
         if (++pump_iterations >= 8)
             break;
 
-        multi_res = curl_multi_wait(rI->tInfo.transferer, NULL, 0, 0, &numfds);
+        multi_res = curl_multi_wait(transferer, NULL, 0, 0, &numfds);
         if (multi_res != CURLM_OK || numfds == 0)
             break;
     } while (1);
 
-    if (!running_handles){
+    if (rI->tInfo.finished || AreTransfersFinished(rI)){
         printf("Downloading done!\n");
         CleanupTransferInfo(rI);
     }

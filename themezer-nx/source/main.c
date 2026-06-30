@@ -46,10 +46,11 @@ int main(int argc, char* argv[])
     InitTextures();
     socketInitializeDefault();
     curl_global_init(CURL_GLOBAL_ALL);
+    InitCurlSession();
     InitHid();
     //nxlinkStdio();
 
-    RequestInfo_t rI = {0, 0, 0, 0, 0, 0, "", 0, 0, 0, NULL, NULL, {NULL, 0, NULL, true}, NULL};
+    RequestInfo_t rI = {0, 0, 0, 0, 0, 0, "", 0, 0, 0, NULL, NULL, {NULL, 0, true}, NULL};
     SetDefaultsRequestInfo(&rI);
     rI.target = 0;
     ShapeLinker_t *items = NULL;
@@ -116,6 +117,7 @@ int main(int argc, char* argv[])
     romfsExit();
     FontExit();
     ExitSDL();
+    CleanupCurlSession();
     curl_global_cleanup();
     socketExit();
     //consoleExit(NULL);

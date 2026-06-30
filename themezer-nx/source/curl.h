@@ -14,6 +14,8 @@ typedef enum {
 } QuickIdLookupType_t;
 
 int GetThemesList(char *url, char *data, cJSON **response);
+int InitCurlSession(void);
+void CleanupCurlSession(void);
 ShapeLinker_t *GenListItemsFromJson(cJSON *json);
 int MakeJsonRequest(char *url, cJSON **response);
 char *GenLink(RequestInfo_t *rI);

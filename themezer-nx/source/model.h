@@ -57,17 +57,17 @@ typedef struct { // We are not going to display like half of these
 typedef struct {
     CURL *transfer;
     get_request_t data;
+    struct RequestInfo *owner;
     int index;
 } Transfer_t;
 
 typedef struct {
     Transfer_t *transfers;
     int queueOffset;
-    CURLM *transferer;
     bool finished;
 } TransferInfo_t;
 
-typedef struct {
+typedef struct RequestInfo {
     int maxDls;
     int target;
     int limit;
