@@ -404,6 +404,7 @@ CURL *CreateRequest(char *url, get_request_t *data){
     curl = curl_easy_init();
     if (curl){
         curl_easy_setopt(curl, CURLOPT_URL, url);
+        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
         curl_easy_setopt(curl, CURLOPT_USERAGENT, "themezer-nx/" APP_VERSION);
         curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
 
