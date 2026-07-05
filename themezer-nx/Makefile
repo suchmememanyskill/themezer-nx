@@ -39,7 +39,7 @@ include $(DEVKITPRO)/libnx/switch_rules
 #---------------------------------------------------------------------------------
 APP_TITLE   := Themezer-NX
 APP_AUTHOR  := Such Meme, Many Skill
-APP_VERSION := 3.2.0
+APP_VERSION := 3.2.1
 
 TARGET		:=	$(notdir $(CURDIR))
 BUILD		:=	build
