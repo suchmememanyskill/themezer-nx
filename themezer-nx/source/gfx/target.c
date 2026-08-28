@@ -32,8 +32,15 @@ int ShowSideTargetMenu(Context_t *ctx){
         if (rI->target != selection){
             int tempTarget = rI->target;
             int tempPage = rI->page;
+            int tempSort = rI->sort;
+            int tempOrder = rI->order;
+            char *tempSearch = CopyTextUtil(rI->search ? rI->search : "");
             SetDefaultsRequestInfo(rI);
             rI->target = selection;
+            rI->sort = tempSort;
+            rI->order = tempOrder;
+            NNFREE(rI->search);
+            rI->search = tempSearch;
             printf("Making request...\n");
             if (MakeRequestAsCtx(ctx, rI)){
                 rI->target = tempTarget;
