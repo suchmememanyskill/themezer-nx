@@ -34,15 +34,24 @@ const char *requestOrders[] = {
 
 static int GetPreviewUrls(cJSON *item, const char *fieldName, cJSON **original, cJSON **thumb);
 static int ParseThemeList(ThemeInfo_t **storage, int size, cJSON *themesList);
+static int ParseSplashList(SplashInfo_t **storage, int size, cJSON *splashesList);
+static int ParseSplash(SplashInfo_t *splashInfo, cJSON *splash);
+static int ParseRemoteInstall(RemoteInstallInfo_t *remoteInstall, cJSON *content, RemoteInstallKind_t kind);
 int GetIndexOfStrArr(const char **toSearch, int limit, const char *search);
 static int ShowApiError(cJSON *root);
 static void SetThemePackInfo(ThemeInfo_t *themeInfo, const char *packId, const char *packCreator, const char *packName);
 static char *CopyJsonStringLiteral(const char *text);
 static CURLM *GetTransferer(void);
-static CURLcode PerformRequest(CURL *curl);
+static CURLcode PerformRequest(CURL *curl, DownloadProgressContext_t *progress);
+static size_t DownloadHeaderCallback(char *buffer, size_t size, size_t nitems, void *userdata);
+static int DownloadProgressCallback(void *clientp, curl_off_t downloadTotal, curl_off_t downloadNow, curl_off_t uploadTotal, curl_off_t uploadNow);
 static void CleanupActiveTransferQueue(RequestInfo_t *except);
 static void HandleCompletedTransfer(Transfer_t *transfer, CURLcode result, Context_t *ctx);
 static bool AreTransfersFinished(RequestInfo_t *rI);
+
+// JAGL owns the controller state, but the download is synchronous and therefore
+// needs to poll that state while the normal menu loop is paused.
+extern PadState pad;
 
 static CURLM *sTransferer = NULL;
 static RequestInfo_t *sActiveTransferQueue = NULL;
@@ -87,7 +96,7 @@ static void CleanupActiveTransferQueue(RequestInfo_t *except){
 static char *GenLookupByQuickIdLink(const char *quickId){
     static char request[0x1200];
     request[0] = '\0';
-    const char *query = "query($quickId:String!){switch{lookupByQuickId(quickId:$quickId){__typename ... on SwitchPack{hexId name creator{username} collageThumbHash collagePreview{hdUrl thumbUrl} themes{hexId creator{username} name description updatedAt downloadCount saveCount target screenshotThumbHash screenshotPreview{hdUrl thumbUrl} downloadUrl}} ... on SwitchTheme{hexId creator{username} name description updatedAt downloadCount saveCount target screenshotThumbHash screenshotPreview{hdUrl thumbUrl} downloadUrl pack{hexId name creator{username}}} ... on SwitchRemoteInstallTheme{author createdAt downloadUrl name quickId target}}}}";
+    const char *query = "query($quickId:String!){switch{lookupByQuickId(quickId:$quickId){__typename ... on SwitchPack{hexId name creator{username} collageThumbHash collagePreview{hdUrl thumbUrl} themes{hexId creator{username} name description updatedAt downloadCount saveCount target screenshotThumbHash screenshotPreview{hdUrl thumbUrl} downloadUrl}} ... on SwitchTheme{hexId creator{username} name description updatedAt downloadCount saveCount target screenshotThumbHash screenshotPreview{hdUrl thumbUrl} downloadUrl pack{hexId name creator{username}}} ... on SwitchSplash{hexId name creator{username} description createdAt updatedAt downloadCount saveCount previewThumbHash preview{hdUrl thumbUrl} downloadUrl quickId} ... on SwitchRemoteInstallTheme{author createdAt downloadUrl name quickId target} ... on SwitchRemoteInstallSplash{author createdAt downloadUrl name quickId}}}}";
     char *variables = NULL;
 
     cJSON *variablesJson = cJSON_CreateObject();
@@ -153,7 +162,7 @@ static int ParseTheme(ThemeInfo_t *themeInfo, cJSON *theme){
     themeInfo->imgLink = CopyTextUtil(original->valuestring);
     themeInfo->thumbLink = CopyTextUtil(thumb->valuestring);
     themeInfo->downloadLink = CopyTextUtil(download->valuestring);
-    themeInfo->target = GetIndexOfStrArr(requestTargets, 7, target->valuestring);
+    themeInfo->target = GetIndexOfStrArr(requestTargets, THEME_TARGET_COUNT, target->valuestring);
     themeInfo->preview = CreateThumbHashTexture(thumb_hash->valuestring);
 
     if (cJSON_IsObject(pack)){
@@ -169,23 +178,70 @@ static int ParseTheme(ThemeInfo_t *themeInfo, cJSON *theme){
     return 0;
 }
 
-static int ParseRemoteTheme(ThemeInfo_t *themeInfo, cJSON *theme){
-    cJSON *author = cJSON_GetObjectItemCaseSensitive(theme, "author");
-    cJSON *created_at = cJSON_GetObjectItemCaseSensitive(theme, "createdAt");
-    cJSON *download = cJSON_GetObjectItemCaseSensitive(theme, "downloadUrl");
-    cJSON *name = cJSON_GetObjectItemCaseSensitive(theme, "name");
-    cJSON *quick_id = cJSON_GetObjectItemCaseSensitive(theme, "quickId");
-    cJSON *target = cJSON_GetObjectItemCaseSensitive(theme, "target");
+static int ParseSplash(SplashInfo_t *splashInfo, cJSON *splash){
+    cJSON *id = cJSON_GetObjectItemCaseSensitive(splash, "hexId");
+    cJSON *quick_id = cJSON_GetObjectItemCaseSensitive(splash, "quickId");
+    cJSON *creator = cJSON_GetObjectItemCaseSensitive(splash, "creator");
+    cJSON *display_name = cJSON_GetObjectItemCaseSensitive(creator, "username");
+    cJSON *name = cJSON_GetObjectItemCaseSensitive(splash, "name");
+    cJSON *description = cJSON_GetObjectItemCaseSensitive(splash, "description");
+    cJSON *created_at = cJSON_GetObjectItemCaseSensitive(splash, "createdAt");
+    cJSON *last_updated = cJSON_GetObjectItemCaseSensitive(splash, "updatedAt");
+    cJSON *dl_count = cJSON_GetObjectItemCaseSensitive(splash, "downloadCount");
+    cJSON *like_count = cJSON_GetObjectItemCaseSensitive(splash, "saveCount");
+    cJSON *original = NULL;
+    cJSON *thumb = NULL;
+    cJSON *thumb_hash = cJSON_GetObjectItemCaseSensitive(splash, "previewThumbHash");
+    cJSON *download = cJSON_GetObjectItemCaseSensitive(splash, "downloadUrl");
 
-    if (!cJSON_IsString(author) || !cJSON_IsString(created_at) || !cJSON_IsString(download) || !cJSON_IsString(name) || !cJSON_IsString(quick_id) || !cJSON_IsString(target))
+    if (!GetPreviewUrls(splash, "preview", &original, &thumb) || !cJSON_IsString(thumb_hash) || !cJSON_IsNumber(dl_count) || !cJSON_IsNumber(like_count) || !cJSON_IsString(created_at) || !cJSON_IsString(last_updated) ||
+        !(cJSON_IsString(description) || cJSON_IsNull(description)) || !cJSON_IsString(name) || !cJSON_IsString(display_name) || !cJSON_IsString(id) || !cJSON_IsString(quick_id) || !cJSON_IsString(download)){
+        return 1;
+    }
+
+    splashInfo->dlCount = dl_count->valueint;
+    splashInfo->likeCount = like_count->valueint;
+    splashInfo->createdAt = CopyTextUtil(created_at->valuestring);
+    splashInfo->lastUpdated = CopyTextUtil(last_updated->valuestring);
+    if (!cJSON_IsNull(description))
+        splashInfo->description = CopyTextUtil(description->valuestring);
+
+    splashInfo->name = SafeFilenameText(name->valuestring);
+    splashInfo->creator = SafeFilenameText(display_name->valuestring);
+    splashInfo->id = CopyTextUtil(id->valuestring);
+    splashInfo->quickId = CopyTextUtil(quick_id->valuestring);
+    splashInfo->imgLink = CopyTextUtil(original->valuestring);
+    splashInfo->thumbLink = CopyTextUtil(thumb->valuestring);
+    splashInfo->downloadLink = CopyTextUtil(download->valuestring);
+    splashInfo->preview = CreateThumbHashTexture(thumb_hash->valuestring);
+
+    return 0;
+}
+
+static int ParseRemoteInstall(RemoteInstallInfo_t *remoteInstall, cJSON *content, RemoteInstallKind_t kind){
+    cJSON *author = cJSON_GetObjectItemCaseSensitive(content, "author");
+    cJSON *created_at = cJSON_GetObjectItemCaseSensitive(content, "createdAt");
+    cJSON *download = cJSON_GetObjectItemCaseSensitive(content, "downloadUrl");
+    cJSON *name = cJSON_GetObjectItemCaseSensitive(content, "name");
+    cJSON *quick_id = cJSON_GetObjectItemCaseSensitive(content, "quickId");
+    cJSON *target = cJSON_GetObjectItemCaseSensitive(content, "target");
+
+    if (!cJSON_IsString(author) || !cJSON_IsString(created_at) || !cJSON_IsString(download) || !cJSON_IsString(name) || !cJSON_IsString(quick_id))
         return 1;
 
-    themeInfo->creator = SafeFilenameText(author->valuestring);
-    themeInfo->name = SafeFilenameText(name->valuestring);
-    themeInfo->id = CopyTextUtil(quick_id->valuestring);
-    themeInfo->lastUpdated = CopyTextUtil(created_at->valuestring);
-    themeInfo->downloadLink = CopyTextUtil(download->valuestring);
-    themeInfo->target = GetIndexOfStrArr(requestTargets, 7, target->valuestring);
+    if (kind == RemoteInstallKindTheme && !cJSON_IsString(target))
+        return 1;
+
+    remoteInstall->creator = SafeFilenameText(author->valuestring);
+    remoteInstall->name = SafeFilenameText(name->valuestring);
+    remoteInstall->quickId = CopyTextUtil(quick_id->valuestring);
+    remoteInstall->lastUpdated = CopyTextUtil(created_at->valuestring);
+    remoteInstall->downloadLink = CopyTextUtil(download->valuestring);
+    remoteInstall->target = -1;
+    remoteInstall->kind = kind;
+
+    if (kind == RemoteInstallKindTheme)
+        remoteInstall->target = GetIndexOfStrArr(requestTargets, THEME_TARGET_COUNT, target->valuestring);
 
     return 0;
 }
@@ -242,21 +298,31 @@ char *GenLink(RequestInfo_t *rI){
         requestTarget = CopyTextUtil("null");
     else 
         requestTarget = CopyTextArgsUtil("\"%s\"",requestTargets[rI->target - 1]);
-    
+
     static char request[0x1000];
     char variables[0x400];
     char *query = NULL;
-    if (rI->target >= 1)
+    bool queryIsEncoded = true;
+    if (rI->target == SPLASH_TARGET_INDEX)
     {
-        // query($target:Target,$paginationArgs:PaginationInput,$sort:ItemSort,$order:SortOrder,$query:String){switch{themes(target:$target,paginationArgs:$paginationArgs,sort:$sort,order:$order,query:$query){nodes{hexId creator{username} name description updatedAt downloadCount saveCount target screenshotThumbHash screenshotPreview{hdUrl thumbUrl} downloadUrl}pageInfo{itemCount limit page pageCount}}}}
-        query = "query%28%24target%3ATarget%2C%24paginationArgs%3APaginationInput%2C%24sort%3AItemSort%2C%24order%3ASortOrder%2C%24query%3AString%29%7Bswitch%7Bthemes%28target%3A%24target%2CpaginationArgs%3A%24paginationArgs%2Csort%3A%24sort%2Corder%3A%24order%2Cquery%3A%24query%29%7Bnodes%7BhexId%20creator%7Busername%7D%20name%20description%20updatedAt%20downloadCount%20saveCount%20target%20screenshotThumbHash%20screenshotPreview%7BhdUrl%20thumbUrl%7D%20downloadUrl%20pack%7BhexId%20name%20creator%7Busername%7D%7D%7DpageInfo%7BitemCount%20limit%20page%20pageCount%7D%7D%7D%7D";
+        query = "query($paginationArgs:PaginationInput,$sort:ItemSort,$order:SortOrder,$query:String,$includeNSFW:Boolean!){switch{splash{splashes(paginationArgs:$paginationArgs,sort:$sort,order:$order,query:$query,includeNSFW:$includeNSFW){nodes{hexId creator{username} name description createdAt updatedAt downloadCount saveCount previewThumbHash preview{hdUrl thumbUrl} downloadUrl quickId}pageInfo{itemCount limit page pageCount}}}}}";
+        queryIsEncoded = false;
+        snprintf(variables, 0x400, "{\"paginationArgs\":{\"page\":%d,\"limit\":%d},\"sort\":\"%s\",\"order\":\"%s\",\"query\":%s,\"includeNSFW\":false}",\
+            rI->page, rI->limit, requestSorts[rI->sort], requestOrders[rI->order], searchQuoted);
+    }
+    else if (rI->target >= 1)
+    {
+        // query($target:Target,$paginationArgs:PaginationInput,$sort:ItemSort,$order:SortOrder,$query:String){switch{themes(target:$target,paginationArgs:$paginationArgs,sort:$sort,order:$order,query:$query){nodes{hexId creator{username} name description updatedAt downloadCount saveCount target screenshotThumbHash screenshotPreview{hdUrl thumbUrl} downloadUrl pack{hexId name creator{username}}}pageInfo{itemCount limit page pageCount}}}}
+        query = "query($target:Target,$paginationArgs:PaginationInput,$sort:ItemSort,$order:SortOrder,$query:String){switch{themes(target:$target,paginationArgs:$paginationArgs,sort:$sort,order:$order,query:$query){nodes{hexId creator{username} name description updatedAt downloadCount saveCount target screenshotThumbHash screenshotPreview{hdUrl thumbUrl} downloadUrl pack{hexId name creator{username}}}pageInfo{itemCount limit page pageCount}}}}";
+        queryIsEncoded = false;
         snprintf(variables, 0x400,"{\"target\":%s,\"paginationArgs\":{\"page\":%d,\"limit\":%d},\"sort\":\"%s\",\"order\":\"%s\",\"query\":%s}",\
             requestTarget, rI->page, rI->limit, requestSorts[rI->sort], requestOrders[rI->order], searchQuoted);
     }
     else if (rI->target == 0)
     {
         // query($paginationArgs:PaginationInput,$sort:ItemSort,$order:SortOrder,$query:String){switch{packs(paginationArgs:$paginationArgs,sort:$sort,order:$order,query:$query){nodes{hexId creator{username} name description updatedAt downloadCount saveCount collageThumbHash collagePreview{hdUrl thumbUrl} themes{hexId creator{username} name description updatedAt downloadCount saveCount target screenshotThumbHash screenshotPreview{hdUrl thumbUrl} downloadUrl}}pageInfo{itemCount limit page pageCount}}}}
-        query = "query%28%24paginationArgs%3APaginationInput%2C%24sort%3AItemSort%2C%24order%3ASortOrder%2C%24query%3AString%29%7Bswitch%7Bpacks%28paginationArgs%3A%24paginationArgs%2Csort%3A%24sort%2Corder%3A%24order%2Cquery%3A%24query%29%7Bnodes%7BhexId%20creator%7Busername%7D%20name%20description%20updatedAt%20downloadCount%20saveCount%20collageThumbHash%20collagePreview%7BhdUrl%20thumbUrl%7D%20themes%7BhexId%20creator%7Busername%7D%20name%20description%20updatedAt%20downloadCount%20saveCount%20target%20screenshotThumbHash%20screenshotPreview%7BhdUrl%20thumbUrl%7D%20downloadUrl%7D%7DpageInfo%7BitemCount%20limit%20page%20pageCount%7D%7D%7D%7D";
+        query = "query($paginationArgs:PaginationInput,$sort:ItemSort,$order:SortOrder,$query:String){switch{packs(paginationArgs:$paginationArgs,sort:$sort,order:$order,query:$query){nodes{hexId creator{username} name description updatedAt downloadCount saveCount collageThumbHash collagePreview{hdUrl thumbUrl} themes{hexId creator{username} name description updatedAt downloadCount saveCount target screenshotThumbHash screenshotPreview{hdUrl thumbUrl} downloadUrl}}pageInfo{itemCount limit page pageCount}}}}";
+        queryIsEncoded = false;
         snprintf(variables, 0x400, "{\"paginationArgs\":{\"page\":%d,\"limit\":%d},\"sort\":\"%s\",\"order\":\"%s\",\"query\":%s}",\
             rI->page, rI->limit, requestSorts[rI->sort], requestOrders[rI->order], searchQuoted);
     }
@@ -264,15 +330,19 @@ char *GenLink(RequestInfo_t *rI){
     CURL *curl = curl_easy_init();
     if(curl) {
         char *output = curl_easy_escape(curl, variables, 0);
+        char *encodedQuery = queryIsEncoded ? NULL : curl_easy_escape(curl, query, 0);
+        const char *requestQuery = encodedQuery ? encodedQuery : query;
         if(output) {
             printf("Encoded: %s\n", output);
-            snprintf(request, sizeof(request), "https://api.themezer.net/graphql?query=%s&variables=%s", query, output);
+            snprintf(request, sizeof(request), "https://api.themezer.net/graphql?query=%s&variables=%s", requestQuery, output);
             curl_free(output);
         }
         else 
         {
-            snprintf(request, sizeof(request), "https://api.themezer.net/graphql?query=%s&variables=%s", query, variables);
+            snprintf(request, sizeof(request), "https://api.themezer.net/graphql?query=%s&variables=%s", requestQuery, variables);
         }
+        if (encodedQuery)
+            curl_free(encodedQuery);
         curl_easy_cleanup(curl);
     }
 
@@ -382,12 +452,25 @@ static size_t write_callback(char *ptr, size_t size, size_t nmemb, void *userdat
 {
     size_t realsize = size * nmemb; 
     get_request_t *req = userdata;
+    size_t required = req->len + realsize + 1;
 
-    while (req->buflen < req->len + realsize + 1)
-    {
-        req->buffer = realloc(req->buffer, req->buflen * 2);
-        req->buflen *= 2;
+    if (required > req->buflen){
+        size_t newBuflen = req->buflen ? req->buflen : CHUNK_SIZE;
+        while (newBuflen < required){
+            if (newBuflen > ((size_t)-1) / 2)
+                return 0;
+
+            newBuflen *= 2;
+        }
+
+        unsigned char *newBuffer = realloc(req->buffer, newBuflen);
+        if (!newBuffer)
+            return 0;
+
+        req->buffer = newBuffer;
+        req->buflen = newBuflen;
     }
+
     memcpy(&req->buffer[req->len], ptr, realsize);
     req->len += realsize;
     req->buffer[req->len] = 0;
@@ -418,6 +501,55 @@ CURL *CreateRequest(char *url, get_request_t *data){
     return curl;
 }
 
+static size_t DownloadHeaderCallback(char *buffer, size_t size, size_t nitems, void *userdata){
+    size_t len = size * nitems;
+    DownloadProgressContext_t *progress = userdata;
+
+    if (progress && len >= 5 && memcmp(buffer, "HTTP/", 5) == 0){
+        char *statusSeparator = memchr(buffer, ' ', len);
+        if (statusSeparator && (size_t)(buffer + len - statusSeparator) >= 4 &&
+            statusSeparator[1] >= '0' && statusSeparator[1] <= '9' &&
+            statusSeparator[2] >= '0' && statusSeparator[2] <= '9' &&
+            statusSeparator[3] >= '0' && statusSeparator[3] <= '9'){
+            int responseCode = (statusSeparator[1] - '0') * 100 +
+                (statusSeparator[2] - '0') * 10 + statusSeparator[3] - '0';
+            progress->finalResponseReady = responseCode >= 200 && responseCode < 300;
+        }
+    }
+
+    return len;
+}
+
+static int DownloadProgressCallback(void *clientp, curl_off_t downloadTotal, curl_off_t downloadNow, curl_off_t uploadTotal, curl_off_t uploadNow){
+    (void)uploadTotal;
+    (void)uploadNow;
+
+    DownloadProgressContext_t *progress = clientp;
+    if (!progress)
+        return 0;
+
+    padUpdate(&pad);
+    if (progress->cancelled || (padGetButtons(&pad) & HidNpadButton_B)){
+        progress->cancelled = true;
+        return 1;
+    }
+
+    if (!progress->finalResponseReady)
+        return 0;
+
+    bool shouldRender = false;
+    if (progress->bar && downloadTotal > 0){
+        u8 percentage = (downloadNow >= downloadTotal) ? 100 : (u8)((downloadNow * 100) / downloadTotal);
+        shouldRender = progress->bar->percentage != percentage;
+        progress->bar->percentage = percentage;
+    }
+
+    if (shouldRender && progress->menu)
+        RenderShapeLinkList(progress->menu);
+
+    return 0;
+}
+
 int MakeJsonRequest(char *url, cJSON **response){
     get_request_t req = {0};
 
@@ -426,7 +558,7 @@ int MakeJsonRequest(char *url, cJSON **response){
     if (!curl)
         return CURLE_FAILED_INIT;
 
-    if (!(res = PerformRequest(curl))){
+    if (!(res = PerformRequest(curl, NULL))){
         if (response != NULL){
             *response = cJSON_Parse((const char *)req.buffer);
         }
@@ -439,44 +571,69 @@ int MakeJsonRequest(char *url, cJSON **response){
     return res;
 }
 
-int MakeDownloadRequest(char *url, char *path){
+int MakeDownloadRequest(char *url, char *path, DownloadProgressContext_t *progress){
     get_request_t req = {0};
     int res;
     CURL *curl = CreateRequest(url, &req);
     if (!curl)
         return CURLE_FAILED_INIT;
 
-    if (!(res = PerformRequest(curl))){
+    if (progress){
+        progress->cancelled = false;
+        progress->finalResponseReady = false;
+        if (progress->bar)
+            progress->bar->percentage = 0;
+        curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, DownloadProgressCallback);
+        curl_easy_setopt(curl, CURLOPT_XFERINFODATA, progress);
+        curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, DownloadHeaderCallback);
+        curl_easy_setopt(curl, CURLOPT_HEADERDATA, progress);
+        curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
+    }
+
+    if (!(res = PerformRequest(curl, progress))){
         long responseCode = 0;
+        char *contentType = NULL;
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &responseCode);
+        curl_easy_getinfo(curl, CURLINFO_CONTENT_TYPE, &contentType);
 
-        cJSON *json = cJSON_Parse((const char *)req.buffer);
-        int apiError = ShowApiError(json);
+        // Successful theme/splash responses are binary. Only try to parse a
+        // response as JSON when the server says it is JSON or returned an
+        // HTTP error; parsing a .nxtheme as cJSON can stall or read past its
+        // binary contents.
+        bool responseIsJson = contentType && strstr(contentType, "json");
+        if (responseCode >= 400 || responseIsJson){
+            cJSON *json = cJSON_ParseWithLengthOpts((const char *)req.buffer, req.len, NULL, 0);
+            int apiError = ShowApiError(json);
 
-        if (apiError){
-            res = apiError;
-        }
-        else if (responseCode >= 400){
-            char *message = CopyTextArgsUtil("The themezer server returned HTTP status %ld.", responseCode);
-            ShapeLinker_t *menu = CreateBaseMessagePopup("Download Error", message);
-            free(message);
-            ShapeLinkAdd(&menu, ButtonCreate(POS(250, 470, 780, 50), COLOR_MAINBG, COLOR_CURSORPRESS, COLOR_WHITE, COLOR_CURSOR, 0, ButtonStyleBottomStrip, "Ok", FONT_TEXT[FSize28], exitFunc), ButtonType);
-            MakeMenu(menu, ButtonHandlerBExit, NULL);
-            ShapeLinkDispose(&menu);
-            res = (int)responseCode;
+            if (apiError){
+                res = apiError;
+            }
+            else if (responseCode >= 400){
+                char *message = CopyTextArgsUtil("The themezer server returned HTTP status %ld.", responseCode);
+                ShapeLinker_t *menu = CreateBaseMessagePopup("Download Error", message);
+                free(message);
+                ShapeLinkAdd(&menu, ButtonCreate(POS(250, 470, 780, 50), COLOR_MAINBG, COLOR_CURSORPRESS, COLOR_WHITE, COLOR_CURSOR, 0, ButtonStyleBottomStrip, "Ok", FONT_TEXT[FSize28], exitFunc), ButtonType);
+                MakeMenu(menu, ButtonHandlerBExit, NULL);
+                ShapeLinkDispose(&menu);
+                res = (int)responseCode;
+            }
+            else {
+                res = 1;
+            }
+
+            cJSON_Delete(json);
         }
         else {
             FILE *fp = fopen(path, "wb");
             if (fp){
-                fwrite(req.buffer, req.len, 1, fp);
-                fclose(fp);
+                size_t written = fwrite(req.buffer, 1, req.len, fp);
+                if (fclose(fp) != 0 || written != req.len)
+                    res = 1;
             }
             else {
                 res = 1;
             }
         }
-
-        cJSON_Delete(json);
     }
 
     free(req.buffer);
@@ -484,7 +641,7 @@ int MakeDownloadRequest(char *url, char *path){
     return res;
 }
 
-static CURLcode PerformRequest(CURL *curl){
+static CURLcode PerformRequest(CURL *curl, DownloadProgressContext_t *progress){
     CleanupActiveTransferQueue(NULL);
 
     CURLM *transferer = GetTransferer();
@@ -525,7 +682,7 @@ static CURLcode PerformRequest(CURL *curl){
             break;
 
         int numfds = 0;
-        multiRes = curl_multi_wait(transferer, NULL, 0, 1000, &numfds);
+        multiRes = curl_multi_wait(transferer, NULL, 0, progress ? 100 : 1000, &numfds);
     } while (multiRes == CURLM_OK);
 
     if (!finished){
@@ -577,14 +734,14 @@ int hasError(cJSON *root){
     return ShowApiError(root) ? 1 : 0;
 }
 
-int DownloadThemeFromUrl(char *url, char *path){
+int DownloadThemeFromUrl(char *url, char *path, DownloadProgressContext_t *progress){
     int res = 1;
 
     if (url){
         if (EnsureDirectoryForFile(path))
             res = 1;
         else
-            res = MakeDownloadRequest(url, path);
+            res = MakeDownloadRequest(url, path, progress);
         free(url);
     }
 
@@ -594,52 +751,84 @@ int DownloadThemeFromUrl(char *url, char *path){
 
 #define MIN(x, y) ((x < y) ? x : y)
 
-void FreeThemes(RequestInfo_t *rI){
-    if (!rI->themes)
+void FreeRequestContent(RequestInfo_t *rI){
+    if (!rI)
         return;
 
-    for (int i = 0; i < rI->curPageItemCount; i++){
-        NNFREE(rI->themes[i].id);
-        NNFREE(rI->themes[i].creator);
-        NNFREE(rI->themes[i].name);
-        NNFREE(rI->themes[i].description);
-        NNFREE(rI->themes[i].lastUpdated);
-        NNFREE(rI->themes[i].imgLink);
-        NNFREE(rI->themes[i].thumbLink);
-        NNFREE(rI->themes[i].downloadLink);
-        NNFREE(rI->themes[i].packId);
-        NNFREE(rI->themes[i].packCreator);
-        NNFREE(rI->themes[i].packName);
-        if (rI->themes[i].preview && rI->packs == NULL)
-            SDL_DestroyTexture(rI->themes[i].preview);
-        
-        if (rI->packs != NULL){
-            free(rI->packs[i].id);
-            free(rI->packs[i].creator);
-            free(rI->packs[i].name);
-            if (rI->packs[i].preview)
-                SDL_DestroyTexture(rI->packs[i].preview);
-            for (int j = 0; j < rI->packs[i].themeCount; j++){
-                free(rI->packs[i].themes[j].id);
-                free(rI->packs[i].themes[j].creator);
-                free(rI->packs[i].themes[j].name);
-                free(rI->packs[i].themes[j].description);
-                free(rI->packs[i].themes[j].lastUpdated);
-                free(rI->packs[i].themes[j].imgLink);
-                free(rI->packs[i].themes[j].thumbLink);
-                free(rI->packs[i].themes[j].downloadLink);
-                free(rI->packs[i].themes[j].packId);
-                free(rI->packs[i].themes[j].packCreator);
-                free(rI->packs[i].themes[j].packName);
-                if  (rI->packs[i].themes[j].preview)
-                    SDL_DestroyTexture(rI->packs[i].themes[j].preview);
-            }
-            free(rI->packs[i].themes);
+    bool themePreviewsOwned = rI->packs == NULL;
+    if (rI->themes){
+        for (int i = 0; i < rI->curPageItemCount; i++){
+            NNFREE(rI->themes[i].id);
+            NNFREE(rI->themes[i].creator);
+            NNFREE(rI->themes[i].name);
+            NNFREE(rI->themes[i].description);
+            NNFREE(rI->themes[i].lastUpdated);
+            NNFREE(rI->themes[i].imgLink);
+            NNFREE(rI->themes[i].thumbLink);
+            NNFREE(rI->themes[i].downloadLink);
+            NNFREE(rI->themes[i].packId);
+            NNFREE(rI->themes[i].packCreator);
+            NNFREE(rI->themes[i].packName);
+            if (themePreviewsOwned && rI->themes[i].preview)
+                SDL_DestroyTexture(rI->themes[i].preview);
         }
+        NNFREE(rI->themes);
     }
 
-    NNFREE(rI->themes);
-    NNFREE(rI->packs);
+    if (rI->packs){
+        for (int i = 0; i < rI->curPageItemCount; i++){
+            NNFREE(rI->packs[i].id);
+            NNFREE(rI->packs[i].creator);
+            NNFREE(rI->packs[i].name);
+            if (rI->packs[i].preview)
+                SDL_DestroyTexture(rI->packs[i].preview);
+
+            for (int j = 0; j < rI->packs[i].themeCount; j++){
+                NNFREE(rI->packs[i].themes[j].id);
+                NNFREE(rI->packs[i].themes[j].creator);
+                NNFREE(rI->packs[i].themes[j].name);
+                NNFREE(rI->packs[i].themes[j].description);
+                NNFREE(rI->packs[i].themes[j].lastUpdated);
+                NNFREE(rI->packs[i].themes[j].imgLink);
+                NNFREE(rI->packs[i].themes[j].thumbLink);
+                NNFREE(rI->packs[i].themes[j].downloadLink);
+                NNFREE(rI->packs[i].themes[j].packId);
+                NNFREE(rI->packs[i].themes[j].packCreator);
+                NNFREE(rI->packs[i].themes[j].packName);
+                if (rI->packs[i].themes[j].preview)
+                    SDL_DestroyTexture(rI->packs[i].themes[j].preview);
+            }
+            NNFREE(rI->packs[i].themes);
+        }
+        NNFREE(rI->packs);
+    }
+
+    if (rI->splashes){
+        for (int i = 0; i < rI->curPageItemCount; i++){
+            NNFREE(rI->splashes[i].id);
+            NNFREE(rI->splashes[i].quickId);
+            NNFREE(rI->splashes[i].creator);
+            NNFREE(rI->splashes[i].name);
+            NNFREE(rI->splashes[i].description);
+            NNFREE(rI->splashes[i].createdAt);
+            NNFREE(rI->splashes[i].lastUpdated);
+            NNFREE(rI->splashes[i].imgLink);
+            NNFREE(rI->splashes[i].thumbLink);
+            NNFREE(rI->splashes[i].downloadLink);
+            if (rI->splashes[i].preview)
+                SDL_DestroyTexture(rI->splashes[i].preview);
+        }
+        NNFREE(rI->splashes);
+    }
+
+    if (rI->remoteInstall){
+        NNFREE(rI->remoteInstall->creator);
+        NNFREE(rI->remoteInstall->name);
+        NNFREE(rI->remoteInstall->quickId);
+        NNFREE(rI->remoteInstall->lastUpdated);
+        NNFREE(rI->remoteInstall->downloadLink);
+        NNFREE(rI->remoteInstall);
+    }
 }
 
 int ParseThemeList(ThemeInfo_t **storage, int size, cJSON *themesList){
@@ -650,6 +839,22 @@ int ParseThemeList(ThemeInfo_t **storage, int size, cJSON *themesList){
     int i = 0;
     cJSON_ArrayForEach(theme, themesList){
         if (ParseTheme(&themes[i], theme))
+            return 1;
+
+        i++;
+    }
+
+    return 0;
+}
+
+static int ParseSplashList(SplashInfo_t **storage, int size, cJSON *splashesList){
+    *storage = calloc(sizeof(SplashInfo_t), size);
+    SplashInfo_t *splashes = *storage;
+
+    cJSON *splash = NULL;
+    int i = 0;
+    cJSON_ArrayForEach(splash, splashesList){
+        if (ParseSplash(&splashes[i], splash))
             return 1;
 
         i++;
@@ -699,12 +904,21 @@ int GenThemeArray(RequestInfo_t *rI){
     if (data){
         cJSON *switchObj = cJSON_GetObjectItemCaseSensitive(data, "switch");
         if (switchObj) {
-            cJSON *queryData;
-            if (rI->target != 0){
-                queryData = cJSON_GetObjectItemCaseSensitive(switchObj, "themes");
-            } else {
+            cJSON *queryData = NULL;
+            if (rI->contentType == RequestContentSplashes){
+                cJSON *splashNamespace = cJSON_GetObjectItemCaseSensitive(switchObj, "splash");
+                queryData = cJSON_GetObjectItemCaseSensitive(splashNamespace, "splashes");
+            }
+            else if (rI->contentType == RequestContentPacks){
                 queryData = cJSON_GetObjectItemCaseSensitive(switchObj, "packs");
             }
+
+            if (rI->contentType == RequestContentThemes)
+                queryData = cJSON_GetObjectItemCaseSensitive(switchObj, "themes");
+
+            if (!queryData)
+                return -1;
+
             cJSON *pagination = cJSON_GetObjectItemCaseSensitive(queryData, "pageInfo");
             cJSON *page_count = cJSON_GetObjectItemCaseSensitive(pagination, "pageCount");
             cJSON *item_count = cJSON_GetObjectItemCaseSensitive(pagination, "itemCount");
@@ -720,14 +934,17 @@ int GenThemeArray(RequestInfo_t *rI){
                 
 
 
-            FreeThemes(rI);
+            FreeRequestContent(rI);
             rI->curPageItemCount = MIN(rI->limit, rI->itemCount - rI->limit * (rI->page - 1));
 
-            if (rI->itemCount <= 0)
+            if (rI->itemCount <= 0){
+                cJSON_Delete(rI->response);
+                rI->response = NULL;
                 return 0;
+            }
 
             cJSON *nodes = cJSON_GetObjectItemCaseSensitive(queryData, "nodes");
-            if (rI->target != 0){
+            if (rI->contentType == RequestContentThemes){
                 if (nodes){
                     if (ParseThemeList(&rI->themes, rI->curPageItemCount, nodes))
                         return -3;
@@ -736,7 +953,7 @@ int GenThemeArray(RequestInfo_t *rI){
                     cJSON_Delete(rI->response);
                 }
             }
-            else {
+            else if (rI->contentType == RequestContentPacks) {
                 if (nodes){
                     if (ParsePackList(&rI->packs, rI->curPageItemCount, nodes)){
                         printf("Pack parser failed!");
@@ -745,6 +962,15 @@ int GenThemeArray(RequestInfo_t *rI){
                         
 
                     FillThemesWithPacks(rI);
+
+                    res = 0;
+                    cJSON_Delete(rI->response);
+                }
+            }
+            else if (rI->contentType == RequestContentSplashes) {
+                if (nodes){
+                    if (ParseSplashList(&rI->splashes, rI->curPageItemCount, nodes))
+                        return -3;
 
                     res = 0;
                     cJSON_Delete(rI->response);
@@ -795,6 +1021,7 @@ int LookupByQuickId(const char *quickId, RequestInfo_t *rI, QuickIdLookupType_t 
     rI->curPageItemCount = 1;
 
     if (!strcmp(typename->valuestring, "SwitchTheme")){
+        rI->contentType = RequestContentThemes;
         rI->themes = calloc(sizeof(ThemeInfo_t), 1);
         if (!rI->themes)
             res = -3;
@@ -804,6 +1031,7 @@ int LookupByQuickId(const char *quickId, RequestInfo_t *rI, QuickIdLookupType_t 
             *lookupType = QuickIdLookupTheme;
     }
     else if (!strcmp(typename->valuestring, "SwitchPack")){
+        rI->contentType = RequestContentPacks;
         rI->packs = calloc(sizeof(PackInfo_t), 1);
         if (!rI->packs)
             res = -3;
@@ -814,14 +1042,26 @@ int LookupByQuickId(const char *quickId, RequestInfo_t *rI, QuickIdLookupType_t 
             *lookupType = QuickIdLookupPack;
         }
     }
-    else if (!strcmp(typename->valuestring, "SwitchRemoteInstallTheme")){
-        rI->themes = calloc(sizeof(ThemeInfo_t), 1);
-        if (!rI->themes)
+    else if (!strcmp(typename->valuestring, "SwitchRemoteInstallTheme") || !strcmp(typename->valuestring, "SwitchRemoteInstallSplash")){
+        RemoteInstallKind_t kind = !strcmp(typename->valuestring, "SwitchRemoteInstallSplash") ? RemoteInstallKindSplash : RemoteInstallKindTheme;
+        rI->contentType = (kind == RemoteInstallKindSplash) ? RequestContentSplashes : RequestContentThemes;
+        rI->remoteInstall = calloc(sizeof(RemoteInstallInfo_t), 1);
+        if (!rI->remoteInstall)
             res = -3;
-        else if (ParseRemoteTheme(&rI->themes[0], lookupData))
+        else if (ParseRemoteInstall(rI->remoteInstall, lookupData, kind))
             res = -3;
         else
-            *lookupType = QuickIdLookupRemoteTheme;
+            *lookupType = QuickIdLookupRemoteInstall;
+    }
+    else if (!strcmp(typename->valuestring, "SwitchSplash")){
+        rI->contentType = RequestContentSplashes;
+        rI->splashes = calloc(sizeof(SplashInfo_t), 1);
+        if (!rI->splashes)
+            res = -3;
+        else if (ParseSplash(&rI->splashes[0], lookupData))
+            res = -3;
+        else
+            *lookupType = QuickIdLookupSplash;
     }
     else {
         res = -2;
@@ -841,7 +1081,12 @@ ShapeLinker_t *GenListItemList(RequestInfo_t *rI){
     printf("Gen: ArraySize: %d", rI->curPageItemCount);
 
     for (int i = 0; i < rI->curPageItemCount; i++){
-        ShapeLinkAdd(&link, ListItemCreate(COLOR_WHITE, COLOR_VERYLIGHTGREY_RGBA, rI->themes[i].preview, rI->themes[i].name, rI->themes[i].creator), ListItemType);
+        if (rI->contentType == RequestContentSplashes){
+            ShapeLinkAdd(&link, ListItemCreate(COLOR_WHITE, COLOR_VERYLIGHTGREY_RGBA, rI->splashes[i].preview, rI->splashes[i].name, rI->splashes[i].creator), ListItemType);
+        }
+        else {
+            ShapeLinkAdd(&link, ListItemCreate(COLOR_WHITE, COLOR_VERYLIGHTGREY_RGBA, rI->themes[i].preview, rI->themes[i].name, rI->themes[i].creator), ListItemType);
+        }
     }
 
     return link;
@@ -872,7 +1117,13 @@ int AddThemeImagesToDownloadQueue(RequestInfo_t *rI, bool thumb){
     curl_multi_setopt(transferer, CURLMOPT_PIPELINING, CURLPIPE_MULTIPLEX);
 
     for (int i = 0; i < rI->curPageItemCount; i++){
-            rI->tInfo.transfers[i].transfer = CreateRequest((thumb) ? rI->themes[i].thumbLink : rI->themes[i].imgLink, &rI->tInfo.transfers[i].data);
+            const char *imageUrl;
+            if (rI->contentType == RequestContentSplashes)
+                imageUrl = (thumb) ? rI->splashes[i].thumbLink : rI->splashes[i].imgLink;
+            else
+                imageUrl = (thumb) ? rI->themes[i].thumbLink : rI->themes[i].imgLink;
+
+            rI->tInfo.transfers[i].transfer = CreateRequest((char *)imageUrl, &rI->tInfo.transfers[i].data);
             rI->tInfo.transfers[i].owner = rI;
             rI->tInfo.transfers[i].index = i;
             if (!rI->tInfo.transfers[i].transfer)
@@ -946,10 +1197,18 @@ static void HandleCompletedTransfer(Transfer_t *transfer, CURLcode result, Conte
     else {
         printf("Download of index %d finished!\n", index);
         get_request_t *req = &transfer->data;
-        SDL_Texture *oldPreview = owner->themes[index].preview;
-        owner->themes[index].preview = LoadImageMemSDL(req->buffer, req->len);
-        if (owner->packs != NULL)
-            owner->packs[index].preview = owner->themes[index].preview;
+        SDL_Texture *oldPreview;
+        SDL_Texture *newPreview = LoadImageMemSDL(req->buffer, req->len);
+        if (owner->contentType == RequestContentSplashes){
+            oldPreview = owner->splashes[index].preview;
+            owner->splashes[index].preview = newPreview;
+        }
+        else {
+            oldPreview = owner->themes[index].preview;
+            owner->themes[index].preview = newPreview;
+            if (owner->packs != NULL)
+                owner->packs[index].preview = newPreview;
+        }
 
         if (ctx){
             ShapeLinker_t *all = ctx->all;
@@ -961,19 +1220,19 @@ static void HandleCompletedTransfer(Transfer_t *transfer, CURLcode result, Conte
                 if (gvLink != NULL){
                     ListGrid_t *gv = gvLink->item;
                     ListItem_t *li = ShapeLinkOffset(gv->text, index)->item;
-                    li->leftImg = owner->themes[index].preview;
+                    li->leftImg = newPreview;
                 }
                 else {
                     ShapeLinker_t *imageLink = ShapeLinkFind(all, ImageType);
                     if (imageLink && imageLink->next){
                         Image_t *img = ShapeLinkFind(imageLink->next, ImageType)->item;
-                        img->texture = owner->themes[index].preview;
+                        img->texture = newPreview;
                     }
                 }
             }
         }
 
-        if (oldPreview && oldPreview != owner->themes[index].preview)
+        if (oldPreview && oldPreview != newPreview)
             SDL_DestroyTexture(oldPreview);
     }
 
@@ -1043,7 +1302,9 @@ int HandleDownloadQueue(Context_t *ctx){
 }
 
 void SetDefaultsRequestInfo(RequestInfo_t *rI){
+    NNFREE(rI->search);
     rI->target = 8;
+    rI->contentType = RequestContentThemes;
     rI->limit = 12;
     rI->page = 1;
     rI->sort = TRENDING_SORT_INDEX;

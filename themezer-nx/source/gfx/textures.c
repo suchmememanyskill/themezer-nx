@@ -12,7 +12,7 @@ static void SetTextureAlpha(SDL_Texture *texture, Uint8 alpha){
 }
 
 SDL_Texture *menuIcon, *searchIcon, *queueIcon, *arrowLIcon, *arrowRIcon, *LeImg, *XIcon, *logo, *icon, *banner, *bgTile, *themeBgThumbHash, *packBgThumbHash, *moodDown, *browseIcon, *quickIdIcon;
-SDL_Texture *targetIcons[9];
+SDL_Texture *targetIcons[TARGET_OPTION_COUNT];
 SDL_Texture *sortIcons[SORT_OPTION_COUNT];
 SDL_Texture *orderIcons[2];
 
@@ -49,6 +49,7 @@ void InitTextures(){
     targetIcons[6] = LoadImageSDL("romfs:/targetIcons/user.png");
     targetIcons[7] = LoadImageSDL("romfs:/targetIcons/news.png");
     targetIcons[8] = LoadImageSDL("romfs:/targetIcons/all.png");
+    targetIcons[9] = LoadImageSDL("romfs:/targetIcons/hekate_boot.png");
 
     // Filter Icons
     sortIcons[0] = LoadImageSDL("romfs:/filterIcons/trending.png");
@@ -82,7 +83,7 @@ void DestroyTextures(){
     SDL_DestroyTexture(packBgThumbHash);
 
     // Target Icons
-    for (int i = 0; i < 9; i++){
+    for (int i = 0; i < TARGET_OPTION_COUNT; i++){
         SDL_DestroyTexture(targetIcons[i]);
     }
 

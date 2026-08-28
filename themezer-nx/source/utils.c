@@ -73,6 +73,39 @@ char *GetThemePath(const ThemeInfo_t *theme, const char *themeType){
 	return path;
 }
 
+char *GetSplashPath(const SplashInfo_t *splash){
+	char *splashName = SafeFilenameText(splash->name);
+	char *creator = SafeFilenameText(splash->creator);
+	char *splashId = SafeFilenameText(splash->id);
+	char *path = CopyTextArgsUtil("/Themes/ThemezerNX/Splashes/%s by %s (splash-%s).bmp", splashName, creator, splashId);
+
+	free(splashName);
+	free(creator);
+	free(splashId);
+	return path;
+}
+
+char *GetRemoteInstallPath(const RemoteInstallInfo_t *remoteInstall){
+	char *name = SafeFilenameText(remoteInstall->name);
+	char *creator = SafeFilenameText(remoteInstall->creator);
+	char *quickId = SafeFilenameText(remoteInstall->quickId);
+	char *path;
+
+	if (remoteInstall->kind == RemoteInstallKindSplash){
+		path = CopyTextArgsUtil("/Themes/ThemezerNX/Splashes/%s by %s (remote-splash-%s).bmp", name, creator, quickId);
+	}
+	else {
+		char *target = SafeFilenameText(GetInstallSlotLabel(remoteInstall->target));
+		path = CopyTextArgsUtil("/Themes/ThemezerNX/%s by %s (%s-%s).nxtheme", name, creator, target, quickId);
+		free(target);
+	}
+
+	free(name);
+	free(creator);
+	free(quickId);
+	return path;
+}
+
 char* showKeyboard(char* message, char* initialText, u64 size){
 	SwkbdConfig	skp; 
 	Result keyrc = swkbdCreate(&skp, 0);
@@ -165,8 +198,8 @@ void AllocateInstalls(int len){
 }
 
 int GetInstallSlotOffset(char *name){
-	for (int i = 0; i < 7; i++){
-		if (!strcmp(targetOptions[i + 1], name))
+	for (int i = 0; i < QueuedInstalls.len; i++){
+		if (!strcmp(GetInstallSlotLabel(i), name))
 			return i;
 	}
 
@@ -174,13 +207,16 @@ int GetInstallSlotOffset(char *name){
 }
 
 int CheckIfInstallSlotIsFree(int pos){
-	if (pos < 0)
+	if (pos < 0 || pos >= QueuedInstalls.len)
 		return 0;
 
 	return (QueuedInstalls.paths[pos] == NULL);
 }
 
 void SetInstallSlot(int pos, char *path){
+	if (pos < 0 || pos >= QueuedInstalls.len)
+		return;
+
 	if (path == NULL){
 		if (QueuedInstalls.paths[pos] != NULL){
 			free(QueuedInstalls.paths[pos]);
@@ -225,6 +261,16 @@ void SetInstallSlot(int pos, char *path){
 	}
 
 	QueuedInstalls.paths[pos] = out;
+}
+
+const char *GetInstallSlotLabel(int pos){
+	if (pos >= 0 && pos < THEME_TARGET_COUNT)
+		return targetOptions[pos + 1];
+
+	if (pos == SPLASH_INSTALL_SLOT)
+		return targetOptions[SPLASH_TARGET_INDEX];
+
+	return "Unknown";
 }
 
 char *GetInstallArgs(const char *path){

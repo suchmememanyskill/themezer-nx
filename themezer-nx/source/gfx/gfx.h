@@ -24,6 +24,7 @@ void ShowLoadingPageUI(Context_t *ctx, RequestInfo_t *rI);
 void SetMainMenuEmptyMessage(ShapeLinker_t *all, char *emptyMessage);
 void SetMainMenuNoContentState(ShapeLinker_t *all, bool visible);
 ShapeLinker_t *CreateBaseMessagePopup(char *title, char *message);
+ShapeLinker_t *CreateDownloadProgressMenu(const char *message, DownloadProgressContext_t *progress);
 ShapeLinker_t *CreateSideBaseMenu(char *menuName);
 int ButtonHandlerBExit(Context_t *ctx);
 int ButtonHandlerBXExit(Context_t *ctx);

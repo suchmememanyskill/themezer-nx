@@ -4,7 +4,7 @@ ShapeLinker_t *CreateSideTargetMenu(RequestInfo_t *rI){
     ShapeLinker_t *out = CreateSideBaseMenu("Type");
 
     ShapeLinker_t *list = NULL;
-    for (int i = 0; i < 9; i++) {
+    for (int i = 0; i < TARGET_OPTION_COUNT; i++) {
         if (rI->target == i) {
             SetActiveColorTexture(targetIcons[i]);
         } else {
@@ -35,20 +35,24 @@ int ShowSideTargetMenu(Context_t *ctx){
             int tempSort = rI->sort;
             int tempOrder = rI->order;
             char *tempSearch = CopyTextUtil(rI->search ? rI->search : "");
+            RequestContentType_t tempContentType = rI->contentType;
             SetDefaultsRequestInfo(rI);
             rI->target = selection;
             rI->sort = tempSort;
             rI->order = tempOrder;
             NNFREE(rI->search);
             rI->search = tempSearch;
+            rI->contentType = (selection == 0) ? RequestContentPacks :
+                (selection == SPLASH_TARGET_INDEX) ? RequestContentSplashes : RequestContentThemes;
             printf("Making request...\n");
             if (MakeRequestAsCtx(ctx, rI)){
                 rI->target = tempTarget;
                 rI->page = tempPage;
+                rI->contentType = tempContentType;
             }
         }
     }
 
     ShapeLinkDispose(&menu);
-    return (menuCtx.curOffset == 8 && menuCtx.origin == OriginFunction) ? -1 : 0; 
+    return (menuCtx.curOffset == 8 && menuCtx.origin == OriginFunction) ? -1 : 0;
 }

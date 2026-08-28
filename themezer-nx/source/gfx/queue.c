@@ -9,7 +9,7 @@ int HandleQueueList(Context_t *ctx){
         return 0;
 
     if (!CheckIfInstallSlotIsFree(installSlotOffset)){
-        char *message = CopyTextArgsUtil("Are you sure you want to remove the %s's queued install?", targetOptions[installSlotOffset + 1]);
+        char *message = CopyTextArgsUtil("Are you sure you want to remove the %s's queued install?", GetInstallSlotLabel(installSlotOffset));
         ShapeLinker_t *menu = CreateBaseMessagePopup("Remove Queued Item?", message);
         free(message);
 
@@ -39,10 +39,10 @@ ShapeLinker_t *CreateSideQueueMenu(){
     ShapeLinker_t *text = NULL;
     int hasAtLeastOne = 0;
 
-    for (int i = 0; i < 7; i++){
+    for (int i = 0; i < INSTALL_QUEUE_COUNT; i++){
         if (!CheckIfInstallSlotIsFree(i)){
             hasAtLeastOne = 1;
-            char *t = CopyTextUtil(targetOptions[i + 1]);
+            char *t = CopyTextUtil(GetInstallSlotLabel(i));
             ShapeLinkAdd(&text, ListItemCreate(COLOR_FILTERACTIVE, COLOR_WHITE, NULL, t, NULL), ListItemType);
             free(t);
         }

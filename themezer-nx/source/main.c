@@ -37,14 +37,16 @@ int main(int argc, char* argv[])
     InitHid();
     //nxlinkStdio();
 
-    RequestInfo_t rI = {0, 0, 0, 0, 0, 0, "", 0, 0, 0, NULL, NULL, {NULL, 0, true}, NULL};
+    RequestInfo_t rI = {0};
     SetDefaultsRequestInfo(&rI);
     rI.target = 0;
+    rI.contentType = RequestContentPacks;
 
-    AllocateInstalls(7);
+    AllocateInstalls(INSTALL_QUEUE_COUNT);
 
     mkdir("/Themes/", 0777);
     mkdir("/Themes/ThemezerNX", 0777);
+    mkdir("/Themes/ThemezerNX/Splashes", 0777);
 
     const char *themeInstallerLocation = GetThemeInstallerPath();
     if (!themeInstallerLocation){
@@ -69,16 +71,18 @@ int main(int argc, char* argv[])
             break;
     }
     
-    FreeThemes(&rI);
+    FreeRequestContent(&rI);
 
     if (themeInstallerLocation){
         if (CheckIfInstallsQueued()){
-            if (R_SUCCEEDED(envSetNextLoad(themeInstallerLocation, GetInstallArgs(themeInstallerLocation)))){
+            char *installArgs = GetInstallArgs(themeInstallerLocation);
+            if (R_SUCCEEDED(envSetNextLoad(themeInstallerLocation, installArgs))){
                 printf("Env set!\n");
             }
             else {
                 printf("Env ded!\n");
             }
+            free(installArgs);
         }
     }
 

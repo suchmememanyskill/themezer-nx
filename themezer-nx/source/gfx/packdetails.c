@@ -2,7 +2,7 @@
 #include <unistd.h>
 
 static const char *GetPackThemeTargetLabel(const ThemeInfo_t *theme){
-    if (theme->target < 0 || theme->target >= 7)
+    if (theme->target < 0 || theme->target >= THEME_TARGET_COUNT)
         return "Unknown";
 
     return targetOptions[theme->target + 1];
@@ -15,32 +15,24 @@ static void ShowPackDetailsMessage(char *title, char *message){
     ShapeLinkDispose(&menu);
 }
 
-static ShapeLinker_t *CreatePackProgressMenu(char *message, TextCentered_t **progressText){
-    ShapeLinker_t *out = NULL;
-
-    SDL_Texture *screenshot = ScreenshotToTexture();
-    ShapeLinkAdd(&out, ImageCreate(screenshot, POS(0, 0, SCREEN_W, SCREEN_H), IMAGE_CLEANUPTEX), ImageType);
-    ShapeLinkAdd(&out, RectangleCreate(POS(0, 0, SCREEN_W, SCREEN_H), COLOR(0,0,0,200), 1), RectangleType);
-    *progressText = TextCenteredCreate(POS(0, 0, SCREEN_W, SCREEN_H), message, COLOR_WHITE, FONT_TEXT[FSize45]);
-    ShapeLinkAdd(&out, *progressText, TextCenteredType);
-
-    return out;
+static ShapeLinker_t *CreatePackProgressMenu(const char *message, DownloadProgressContext_t *progress){
+    return CreateDownloadProgressMenu(message, progress);
 }
 
-static int DownloadPackTheme(ThemeInfo_t *theme){
+static int DownloadPackTheme(ThemeInfo_t *theme, DownloadProgressContext_t *progress){
     char *path = GetThemePath(theme, GetPackThemeTargetLabel(theme));
-    int res = DownloadThemeFromUrl(CopyTextUtil(theme->downloadLink), path);
+    int res = DownloadThemeFromUrl(CopyTextUtil(theme->downloadLink), path, progress);
     free(path);
 
     return res;
 }
 
-static int EnsurePackThemeDownloaded(ThemeInfo_t *theme){
+static int EnsurePackThemeDownloaded(ThemeInfo_t *theme, DownloadProgressContext_t *progress){
     char *path = GetThemePath(theme, GetPackThemeTargetLabel(theme));
     int res = 0;
 
     if (access(path, F_OK) == -1)
-        res = DownloadThemeFromUrl(CopyTextUtil(theme->downloadLink), path);
+        res = DownloadThemeFromUrl(CopyTextUtil(theme->downloadLink), path, progress);
 
     free(path);
     return res;
@@ -93,7 +85,7 @@ static int ShowPackTargetChoice(ThemeInfo_t *themes, int themeCount, int target)
 static int ConfirmPackInstallOverwrite(const int *selectedThemes){
     int conflictCount = 0;
 
-    for (int target = 0; target < 7; target++){
+    for (int target = 0; target < THEME_TARGET_COUNT; target++){
         if (selectedThemes[target] >= 0 && !CheckIfInstallSlotIsFree(target))
             conflictCount++;
     }
@@ -116,24 +108,32 @@ static int ConfirmPackInstallOverwrite(const int *selectedThemes){
 
 int DownloadPackButton(Context_t *ctx){
     RequestInfo_t *rI = ShapeLinkFind(ctx->all, DataType)->item;
-    TextCentered_t *progressText = NULL;
-    ShapeLinker_t *progress = CreatePackProgressMenu("Downloading Themes...", &progressText);
+    DownloadProgressContext_t progressContext = {0};
+    ShapeLinker_t *progress = CreatePackProgressMenu("Downloading Themes...", &progressContext);
     int failures = 0;
 
     for (int i = 0; i < rI->curPageItemCount; i++){
         char *message = CopyTextArgsUtil("Downloading Themes... %d/%d", i + 1, rI->curPageItemCount);
-        free(progressText->text.text);
-        progressText->text.text = CopyTextUtil(message);
+        free(progressContext.message->text.text);
+        progressContext.message->text.text = CopyTextUtil(message);
+        progressContext.bar->percentage = 0;
         free(message);
         RenderShapeLinkList(progress);
 
-        if (DownloadPackTheme(&rI->themes[i]))
+        if (DownloadPackTheme(&rI->themes[i], &progressContext)){
+            if (progressContext.cancelled)
+                break;
             failures++;
+        }
     }
 
+    bool cancelled = progressContext.cancelled;
     ShapeLinkDispose(&progress);
 
-    if (failures){
+    if (cancelled){
+        ShowPackDetailsMessage("Download Cancelled", "Theme downloads were cancelled.");
+    }
+    else if (failures){
         char *message = CopyTextArgsUtil("%d theme%s failed to download.", failures, failures == 1 ? "" : "s");
         ShowPackDetailsMessage("Download Incomplete", message);
         free(message);
@@ -147,13 +147,13 @@ int DownloadPackButton(Context_t *ctx){
 
 int InstallPackButton(Context_t *ctx){
     RequestInfo_t *rI = ShapeLinkFind(ctx->all, DataType)->item;
-    int selectedThemes[7];
+    int selectedThemes[THEME_TARGET_COUNT];
     int selectedCount = 0;
 
-    for (int i = 0; i < 7; i++)
+    for (int i = 0; i < THEME_TARGET_COUNT; i++)
         selectedThemes[i] = -1;
 
-    for (int target = 0; target < 7; target++){
+    for (int target = 0; target < THEME_TARGET_COUNT; target++){
         int count = 0;
         int firstIndex = -1;
 
@@ -187,25 +187,28 @@ int InstallPackButton(Context_t *ctx){
     if (!ConfirmPackInstallOverwrite(selectedThemes))
         return 0;
 
-    TextCentered_t *progressText = NULL;
-    ShapeLinker_t *progress = CreatePackProgressMenu("Queueing Installs...", &progressText);
+    DownloadProgressContext_t progressContext = {0};
+    ShapeLinker_t *progress = CreatePackProgressMenu("Queueing Installs...", &progressContext);
     int failures = 0;
     int queued = 0;
     int processed = 0;
 
-    for (int target = 0; target < 7; target++){
+    for (int target = 0; target < THEME_TARGET_COUNT; target++){
         if (selectedThemes[target] < 0)
             continue;
 
         ThemeInfo_t *theme = &rI->themes[selectedThemes[target]];
         processed++;
         char *message = CopyTextArgsUtil("Queueing Installs... %d/%d", processed, selectedCount);
-        free(progressText->text.text);
-        progressText->text.text = CopyTextUtil(message);
+        free(progressContext.message->text.text);
+        progressContext.message->text.text = CopyTextUtil(message);
+        progressContext.bar->percentage = 0;
         free(message);
         RenderShapeLinkList(progress);
 
-        if (EnsurePackThemeDownloaded(theme)){
+        if (EnsurePackThemeDownloaded(theme, &progressContext)){
+            if (progressContext.cancelled)
+                break;
             failures++;
             continue;
         }
@@ -216,9 +219,13 @@ int InstallPackButton(Context_t *ctx){
         queued++;
     }
 
+    bool cancelled = progressContext.cancelled;
     ShapeLinkDispose(&progress);
 
-    if (failures){
+    if (cancelled){
+        ShowPackDetailsMessage("Install Cancelled", "Theme downloads were cancelled.");
+    }
+    else if (failures){
         char *message = CopyTextArgsUtil("%d install%s queued. %d theme%s failed to download.", queued, queued == 1 ? "" : "s", failures, failures == 1 ? "" : "s");
         ShowPackDetailsMessage("Install Incomplete", message);
         free(message);
@@ -262,7 +269,12 @@ int ShowPackDetails(Context_t *ctx){
     RequestInfo_t *rI = ShapeLinkFind(ctx->all, DataType)->item;
     // target = -1 (not 0): prevents ThemeSelect from treating these as a pack listing and
     // recursively calling ShowPackDetails with a NULL packs array
-    RequestInfo_t customRI = {12, -1, 0, 0, 0, 0, NULL, 0, 0, rI->packs[gv->highlight].themeCount, NULL, rI->packs[gv->highlight].themes, {NULL, 0, 1}, NULL};
+    RequestInfo_t customRI = {0};
+    customRI.maxDls = 12;
+    customRI.target = -1;
+    customRI.curPageItemCount = rI->packs[gv->highlight].themeCount;
+    customRI.themes = rI->packs[gv->highlight].themes;
+    customRI.contentType = RequestContentThemes;
 
     printf("Showing pack details...\nCount: %d\nEntry: %d\n", rI->packs[gv->highlight].themeCount, gv->highlight);
 

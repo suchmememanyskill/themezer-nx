@@ -205,6 +205,55 @@ ShapeLinker_t *CreateBaseMessagePopup(char *title, char *message){ // Other code
     return out;
 }
 
+static void AddDownloadCancelHint(ShapeLinker_t **out){
+    const char *prefix = "Hold";
+    const char *suffix = "to cancel";
+    const int hintY = 460;
+    const int hintH = 50;
+    const int gap = 8;
+
+    SizeInfo_t prefixSize = GetTextSizeSDL(FONT_TEXT[FSize23], prefix);
+    SizeInfo_t suffixSize = GetTextSizeSDL(FONT_TEXT[FSize23], suffix);
+    int glyphMinX, glyphMinY, glyphMaxX, glyphMaxY, glyphAdvance;
+    if (TTF_GlyphMetrics(FONT_BTN[FSize20], BUTTON_B, &glyphMinX, &glyphMaxX, &glyphMinY, &glyphMaxY, &glyphAdvance) != 0 || glyphAdvance < 0)
+        glyphAdvance = 0;
+
+    int x = (SCREEN_W - prefixSize.w - gap - glyphAdvance - gap - suffixSize.w) / 2;
+    int textY = hintY + (hintH - prefixSize.h) / 2;
+    int glyphY = hintY + (hintH - TTF_FontHeight(FONT_BTN[FSize20])) / 2;
+
+    ShapeLinkAdd(out, TextCreate(x, textY, prefix, COLOR_WHITE, FONT_TEXT[FSize23]), TextType);
+    x += prefixSize.w + gap;
+    ShapeLinkAdd(out, GlyphCreate(x, glyphY, BUTTON_B, COLOR_WHITE, FONT_BTN[FSize20]), GlyphType);
+    x += glyphAdvance + gap;
+    ShapeLinkAdd(out, TextCreate(x, textY, suffix, COLOR_WHITE, FONT_TEXT[FSize23]), TextType);
+}
+
+ShapeLinker_t *CreateDownloadProgressMenu(const char *message, DownloadProgressContext_t *progress){
+    ShapeLinker_t *out = NULL;
+
+    SDL_Texture *screenshot = ScreenshotToTexture();
+    ShapeLinkAdd(&out, ImageCreate(screenshot, POS(0, 0, SCREEN_W, SCREEN_H), IMAGE_CLEANUPTEX), ImageType);
+    ShapeLinkAdd(&out, RectangleCreate(POS(0, 0, SCREEN_W, SCREEN_H), COLOR(0, 0, 0, 200), 1), RectangleType);
+
+    TextCentered_t *progressMessage = TextCenteredCreate(POS(0, 250, SCREEN_W, 100), message, COLOR_WHITE, FONT_TEXT[FSize45]);
+    ShapeLinkAdd(&out, progressMessage, TextCenteredType);
+    AddDownloadCancelHint(&out);
+
+    ProgressBar_t *progressBar = ProgressBarCreate(POS(220, 400, SCREEN_W - 440, 35), COLOR_DOWNLOADBTN, COLOR_DARKGREY, ProgressBarStyleBorder, 0);
+    ShapeLinkAdd(&out, progressBar, ProgressBarType);
+
+    if (progress){
+        progress->menu = out;
+        progress->message = progressMessage;
+        progress->bar = progressBar;
+        progress->cancelled = false;
+        progress->finalResponseReady = false;
+    }
+
+    return out;
+}
+
 int ShowCurlError(Context_t *ctx){
     ShapeLinker_t *menu = NULL;
 
