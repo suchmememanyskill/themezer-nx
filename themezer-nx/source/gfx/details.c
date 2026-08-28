@@ -243,7 +243,7 @@ static ShapeLinker_t *CreateSplashSelectMenu(RequestInfo_t *rI){
 
     char *created = CopyTextUtil(target->createdAt);
     char *updated = CopyTextUtil(target->lastUpdated);
-    char *info = CopyTextArgsUtil("By %s\n\nCreated: %s\n\nLast Updated: %s\n\nQuick ID: %s\n\nType: Hekate Splash", target->creator, strtok(created, "T"), strtok(updated, "T"), target->quickId);
+    char *info = CopyTextArgsUtil("By %s\n\nCreated: %s\nUpdated: %s\n\nQuick ID: %s\n\nType: Hekate Splash", target->creator, strtok(created, "T"), strtok(updated, "T"), target->quickId);
     ShapeLinkAdd(&out, TextCenteredCreate(POS(920, 250, SCREEN_W - 990, 300), info, COLOR_WHITE, FONT_TEXT[FSize23]), TextBoxType);
     free(info);
     free(created);
@@ -378,7 +378,7 @@ ShapeLinker_t *CreateSelectMenu(RequestInfo_t *rI){
     ShapeLinkAdd(&out, ButtonCreate(POS(915, 110, SCREEN_W - 980, 60), COLOR_INSTALLBTN, COLOR_INSTALLBTNPRS, COLOR_WHITE, COLOR_INSTALLBTNSEL, (GetInstallButtonState()) ? 0 : BUTTON_DISABLED, ButtonStyleFlat, "Install", FONT_TEXT[FSize30], InstallThemeButton), ButtonType);
     ShapeLinkAdd(&out, ButtonCreate(POS(915, 180, SCREEN_W - 980, 60), COLOR_DOWNLOADBTN, COLOR_DOWNLOADBTNPRS, COLOR_WHITE, COLOR_DOWNLOADBTNSEL, 0, ButtonStyleFlat, "Download Only", FONT_TEXT[FSize30], DownloadThemeButton), ButtonType);
 
-    char *info = CopyTextArgsUtil("By %s\n\nLast Updated: %s\n\nID: %s\nDownloads: %d\nSaves: %d\n\nMenu: %s", target->creator, strtok(target->lastUpdated, "T"), target->id, target->dlCount, target->likeCount, GetThemeTargetLabel(target));
+    char *info = CopyTextArgsUtil("By %s\n\nUpdated: %s\n\nID: %s\nDownloads: %d\nSaves: %d\n\nMenu: %s", target->creator, strtok(target->lastUpdated, "T"), target->id, target->dlCount, target->likeCount, GetThemeTargetLabel(target));
     ShapeLinkAdd(&out, TextCenteredCreate(POS(920, 250, SCREEN_W - 990, 420), info, COLOR_WHITE, FONT_TEXT[FSize23]), TextBoxType);
     if (target->description != NULL && target->description[0]) {
         ShapeLinkAdd(&out, TextCenteredCreate(POS(60, 590, SCREEN_W - 120, 82), target->description, COLOR_WHITE, FONT_TEXT[FSize23]), TextBoxType);
