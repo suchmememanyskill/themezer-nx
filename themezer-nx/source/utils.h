@@ -18,4 +18,6 @@ const char* GetThemeInstallerPath();
 char *GetThemePath(const ThemeInfo_t *theme, const char *themeType);
 char *GetSplashPath(const SplashInfo_t *splash);
 char *GetRemoteInstallPath(const RemoteInstallInfo_t *remoteInstall);
+char *GetTemporaryRemoteInstallPath(const RemoteInstallInfo_t *remoteInstall);
+void CleanupTemporaryRemoteInstalls(void);
 int GetInstallSlotOffset(char *name);

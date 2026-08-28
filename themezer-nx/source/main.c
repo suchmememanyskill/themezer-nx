@@ -47,6 +47,8 @@ int main(int argc, char* argv[])
     mkdir("/Themes/", 0777);
     mkdir("/Themes/ThemezerNX", 0777);
     mkdir("/Themes/ThemezerNX/Splashes", 0777);
+    mkdir("/Themes/ThemezerNX/.tmp", 0777);
+    CleanupTemporaryRemoteInstalls();
 
     const char *themeInstallerLocation = GetThemeInstallerPath();
     if (!themeInstallerLocation){

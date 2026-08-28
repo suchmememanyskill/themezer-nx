@@ -4,6 +4,7 @@
 #include <JAGL.h>
 #include <unistd.h>
 #include <sys/stat.h> 
+#include <dirent.h>
 #include <errno.h>
 #include "model.h"
 
@@ -104,6 +105,39 @@ char *GetRemoteInstallPath(const RemoteInstallInfo_t *remoteInstall){
 	free(creator);
 	free(quickId);
 	return path;
+}
+
+#define REMOTE_INSTALL_TEMP_DIR "/Themes/ThemezerNX/.tmp"
+
+char *GetTemporaryRemoteInstallPath(const RemoteInstallInfo_t *remoteInstall){
+	char *quickId = SafeFilenameText(remoteInstall->quickId);
+	char *path = CopyTextArgsUtil(
+		REMOTE_INSTALL_TEMP_DIR "/remote-%s-%s.%s",
+		(remoteInstall->kind == RemoteInstallKindSplash) ? "splash" : "theme",
+		quickId,
+		(remoteInstall->kind == RemoteInstallKindSplash) ? "bmp" : "nxtheme"
+	);
+
+	free(quickId);
+	return path;
+}
+
+void CleanupTemporaryRemoteInstalls(void){
+	DIR *dir = opendir(REMOTE_INSTALL_TEMP_DIR);
+	if (!dir)
+		return;
+
+	struct dirent *entry;
+	while ((entry = readdir(dir)) != NULL){
+		if (!strcmp(entry->d_name, ".") || !strcmp(entry->d_name, ".."))
+			continue;
+
+		char *path = CopyTextArgsUtil(REMOTE_INSTALL_TEMP_DIR "/%s", entry->d_name);
+		unlink(path);
+		free(path);
+	}
+
+	closedir(dir);
 }
 
 char* showKeyboard(char* message, char* initialText, u64 size){

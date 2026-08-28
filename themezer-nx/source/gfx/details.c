@@ -104,10 +104,7 @@ static int DownloadRemoteInstallButton(Context_t *ctx){
     return res;
 }
 
-static int InstallRemoteInstallButton(Context_t *ctx){
-    RequestInfo_t *rI = ShapeLinkFind(ctx->all, DataType)->item;
-    RemoteInstallInfo_t *target = rI->remoteInstall;
-    char *path = GetRemoteInstallPath(target);
+static int InstallRemoteInstallAtPath(RemoteInstallInfo_t *target, char *path){
     int res = 0;
 
     if (access(path, F_OK) == -1)
@@ -133,6 +130,18 @@ static int InstallRemoteInstallButton(Context_t *ctx){
     return 0;
 }
 
+static int InstallRemoteInstallButton(Context_t *ctx){
+    RequestInfo_t *rI = ShapeLinkFind(ctx->all, DataType)->item;
+    RemoteInstallInfo_t *target = rI->remoteInstall;
+    return InstallRemoteInstallAtPath(target, GetRemoteInstallPath(target));
+}
+
+static int InstallRemoteInstallOnlyButton(Context_t *ctx){
+    RequestInfo_t *rI = ShapeLinkFind(ctx->all, DataType)->item;
+    RemoteInstallInfo_t *target = rI->remoteInstall;
+    return InstallRemoteInstallAtPath(target, GetTemporaryRemoteInstallPath(target));
+}
+
 static ShapeLinker_t *CreateRemoteSelectMenu(RequestInfo_t *rI){
     ShapeLinker_t *out = NULL;
     RemoteInstallInfo_t *target = rI->remoteInstall;
@@ -147,8 +156,9 @@ static ShapeLinker_t *CreateRemoteSelectMenu(RequestInfo_t *rI){
     ShapeLinkAdd(&out, ButtonCreate(POS(SCREEN_W - 200, 70, 50, 50), COLOR_TOPBAR, COLOR_RED, COLOR_WHITE, COLOR_TOPBARCURSOR, 0, ButtonStyleFlat, NULL, NULL, exitFunc), ButtonType);
     ShapeLinkAdd(&out, ImageCreate(XIcon, POS(SCREEN_W - 200, 70, 50, 50), 0), ImageType);
 
-    ShapeLinkAdd(&out, ButtonCreate(POS(190, 150, 420, 60), COLOR_INSTALLBTN, COLOR_INSTALLBTNPRS, COLOR_WHITE, COLOR_INSTALLBTNSEL, GetInstallButtonState() ? 0 : BUTTON_DISABLED, ButtonStyleFlat, "Install", FONT_TEXT[FSize30], InstallRemoteInstallButton), ButtonType);
-    ShapeLinkAdd(&out, ButtonCreate(POS(670, 150, 420, 60), COLOR_DOWNLOADBTN, COLOR_DOWNLOADBTNPRS, COLOR_WHITE, COLOR_DOWNLOADBTNSEL, 0, ButtonStyleFlat, "Download Only", FONT_TEXT[FSize30], DownloadRemoteInstallButton), ButtonType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(190, 150, 280, 60), COLOR_INSTALLBTN, COLOR_INSTALLBTNPRS, COLOR_WHITE, COLOR_INSTALLBTNSEL, GetInstallButtonState() ? 0 : BUTTON_DISABLED, ButtonStyleFlat, "Install & Save", FONT_TEXT[FSize30], InstallRemoteInstallButton), ButtonType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(490, 150, 280, 60), COLOR_INSTALLBTN, COLOR_INSTALLBTNPRS, COLOR_WHITE, COLOR_INSTALLBTNSEL, GetInstallButtonState() ? 0 : BUTTON_DISABLED, ButtonStyleFlat, "Install Only", FONT_TEXT[FSize30], InstallRemoteInstallOnlyButton), ButtonType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(790, 150, 280, 60), COLOR_DOWNLOADBTN, COLOR_DOWNLOADBTNPRS, COLOR_WHITE, COLOR_DOWNLOADBTNSEL, 0, ButtonStyleFlat, "Download Only", FONT_TEXT[FSize30], DownloadRemoteInstallButton), ButtonType);
 
     char *created = CopyTextUtil(target->lastUpdated);
     char *info = NULL;
