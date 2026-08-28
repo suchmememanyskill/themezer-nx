@@ -20,7 +20,6 @@ const char *requestTargets[] = {
 };
 
 const char *requestSorts[] = {
-    "RISING",
     "TRENDING",
     "CREATED",
     "UPDATED",
@@ -1047,7 +1046,7 @@ void SetDefaultsRequestInfo(RequestInfo_t *rI){
     rI->target = 8;
     rI->limit = 12;
     rI->page = 1;
-    rI->sort = 0;
+    rI->sort = TRENDING_SORT_INDEX;
     rI->order = 0;
     rI->search = CopyTextUtil("");
     rI->maxDls = 12;

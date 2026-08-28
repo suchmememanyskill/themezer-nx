@@ -51,12 +51,11 @@ void InitTextures(){
     targetIcons[8] = LoadImageSDL("romfs:/targetIcons/all.png");
 
     // Filter Icons
-    sortIcons[0] = LoadImageSDL("romfs:/filterIcons/rising.png");
-    sortIcons[1] = LoadImageSDL("romfs:/filterIcons/trending.png");
-    sortIcons[2] = LoadImageSDL("romfs:/filterIcons/created.png");
-    sortIcons[3] = LoadImageSDL("romfs:/filterIcons/updated.png");
-    sortIcons[4] = LoadImageSDL("romfs:/filterIcons/downloads.png");
-    sortIcons[5] = LoadImageSDL("romfs:/filterIcons/saves.png");
+    sortIcons[0] = LoadImageSDL("romfs:/filterIcons/trending.png");
+    sortIcons[1] = LoadImageSDL("romfs:/filterIcons/created.png");
+    sortIcons[2] = LoadImageSDL("romfs:/filterIcons/updated.png");
+    sortIcons[3] = LoadImageSDL("romfs:/filterIcons/downloads.png");
+    sortIcons[4] = LoadImageSDL("romfs:/filterIcons/saves.png");
 
     // Order Icons
     orderIcons[0] = LoadImageSDL("romfs:/filterIcons/desc.png");
