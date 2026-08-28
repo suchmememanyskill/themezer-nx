@@ -157,7 +157,7 @@ static ShapeLinker_t *CreateRemoteSelectMenu(RequestInfo_t *rI){
     ShapeLinkAdd(&out, ImageCreate(XIcon, POS(SCREEN_W - 200, 70, 50, 50), 0), ImageType);
 
     ShapeLinkAdd(&out, ButtonCreate(POS(190, 150, 280, 60), COLOR_INSTALLBTN, COLOR_INSTALLBTNPRS, COLOR_WHITE, COLOR_INSTALLBTNSEL, GetInstallButtonState() ? 0 : BUTTON_DISABLED, ButtonStyleFlat, "Install & Save", FONT_TEXT[FSize30], InstallRemoteInstallButton), ButtonType);
-    ShapeLinkAdd(&out, ButtonCreate(POS(490, 150, 280, 60), COLOR_INSTALLBTN, COLOR_INSTALLBTNPRS, COLOR_WHITE, COLOR_INSTALLBTNSEL, GetInstallButtonState() ? 0 : BUTTON_DISABLED, ButtonStyleFlat, "Install Only", FONT_TEXT[FSize30], InstallRemoteInstallOnlyButton), ButtonType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(490, 150, 280, 60), COLOR_INSTALLONLYBTN, COLOR_INSTALLONLYBTNPRS, COLOR_WHITE, COLOR_INSTALLONLYBTNSEL, GetInstallButtonState() ? 0 : BUTTON_DISABLED, ButtonStyleFlat, "Install Only", FONT_TEXT[FSize30], InstallRemoteInstallOnlyButton), ButtonType);
     ShapeLinkAdd(&out, ButtonCreate(POS(790, 150, 280, 60), COLOR_DOWNLOADBTN, COLOR_DOWNLOADBTNPRS, COLOR_WHITE, COLOR_DOWNLOADBTNSEL, 0, ButtonStyleFlat, "Download Only", FONT_TEXT[FSize30], DownloadRemoteInstallButton), ButtonType);
 
     char *created = CopyTextUtil(target->lastUpdated);
@@ -197,10 +197,7 @@ static int DownloadSplashButton(Context_t *ctx){
     return res;
 }
 
-static int InstallSplashButton(Context_t *ctx){
-    RequestInfo_t *rI = ShapeLinkFind(ctx->all, DataType)->item;
-    SplashInfo_t *target = rI->splashes;
-    char *path = GetSplashPath(target);
+static int InstallSplashAtPath(SplashInfo_t *target, char *path){
     int res = 0;
 
     if (access(path, F_OK) == -1)
@@ -221,6 +218,16 @@ static int InstallSplashButton(Context_t *ctx){
     return 0;
 }
 
+static int InstallSplashButton(Context_t *ctx){
+    RequestInfo_t *rI = ShapeLinkFind(ctx->all, DataType)->item;
+    return InstallSplashAtPath(rI->splashes, GetSplashPath(rI->splashes));
+}
+
+static int InstallSplashOnlyButton(Context_t *ctx){
+    RequestInfo_t *rI = ShapeLinkFind(ctx->all, DataType)->item;
+    return InstallSplashAtPath(rI->splashes, GetTemporarySplashPath(rI->splashes));
+}
+
 static ShapeLinker_t *CreateSplashSelectMenu(RequestInfo_t *rI){
     SplashInfo_t *target = rI->splashes;
     ShapeLinker_t *out = NULL;
@@ -238,13 +245,16 @@ static ShapeLinker_t *CreateSplashSelectMenu(RequestInfo_t *rI){
     ShapeLinkAdd(&out, ImageCreate(target->preview, POS(55, 105, 850, 478), 0), ImageType);
     ShapeLinkAdd(&out, ImageCreate(XIcon, POS(SCREEN_W - 100, 50, 50, 50), 0), ImageType);
 
-    ShapeLinkAdd(&out, ButtonCreate(POS(915, 110, SCREEN_W - 980, 60), COLOR_INSTALLBTN, COLOR_INSTALLBTNPRS, COLOR_WHITE, COLOR_INSTALLBTNSEL, GetInstallButtonState() ? 0 : BUTTON_DISABLED, ButtonStyleFlat, "Install", FONT_TEXT[FSize30], InstallSplashButton), ButtonType);
-    ShapeLinkAdd(&out, ButtonCreate(POS(915, 180, SCREEN_W - 980, 60), COLOR_DOWNLOADBTN, COLOR_DOWNLOADBTNPRS, COLOR_WHITE, COLOR_DOWNLOADBTNSEL, 0, ButtonStyleFlat, "Download Only", FONT_TEXT[FSize30], DownloadSplashButton), ButtonType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(915, 110, SCREEN_W - 980, 60), COLOR_INSTALLBTN, COLOR_INSTALLBTNPRS, COLOR_WHITE, COLOR_INSTALLBTNSEL, GetInstallButtonState() ? 0 : BUTTON_DISABLED, ButtonStyleFlat, "Install & Save", FONT_TEXT[FSize30], InstallSplashButton), ButtonType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(915, 180, SCREEN_W - 980, 60), COLOR_INSTALLONLYBTN, COLOR_INSTALLONLYBTNPRS, COLOR_WHITE, COLOR_INSTALLONLYBTNSEL, GetInstallButtonState() ? 0 : BUTTON_DISABLED, ButtonStyleFlat, "Install Only", FONT_TEXT[FSize30], InstallSplashOnlyButton), ButtonType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(915, 250, SCREEN_W - 980, 60), COLOR_DOWNLOADBTN, COLOR_DOWNLOADBTNPRS, COLOR_WHITE, COLOR_DOWNLOADBTNSEL, 0, ButtonStyleFlat, "Download Only", FONT_TEXT[FSize30], DownloadSplashButton), ButtonType);
 
     char *created = CopyTextUtil(target->createdAt);
     char *updated = CopyTextUtil(target->lastUpdated);
-    char *info = CopyTextArgsUtil("By %s\n\nCreated: %s\nUpdated: %s\n\nQuick ID: %s\n\nType: Hekate Splash", target->creator, strtok(created, "T"), strtok(updated, "T"), target->quickId);
-    ShapeLinkAdd(&out, TextCenteredCreate(POS(920, 250, SCREEN_W - 990, 300), info, COLOR_WHITE, FONT_TEXT[FSize23]), TextBoxType);
+    char *createdDate = strtok(created, "T");
+    char *updatedDate = strtok(updated, "T");
+    char *info = CopyTextArgsUtil("By %s\n\nCreated: %s\nUpdated: %s\n\nQuick ID: %s\n\nType: Hekate Splash", target->creator, createdDate, updatedDate, target->quickId);
+    ShapeLinkAdd(&out, TextCenteredCreate(POS(920, 320, SCREEN_W - 990, 260), info, COLOR_WHITE, FONT_TEXT[FSize23]), TextBoxType);
     free(info);
     free(created);
     free(updated);
@@ -309,50 +319,56 @@ int EnlargePreviewImage(Context_t *ctx){
     return 0;
 }
 
-int DownloadThemeButton(Context_t *ctx){
-    RequestInfo_t *rI = ShapeLinkFind(ctx->all, DataType)->item;
-    ThemeInfo_t *target = rI->themes;
-
+static int DownloadThemeToPath(ThemeInfo_t *target, char *path){
     DownloadProgressContext_t progress = {0};
     ShapeLinker_t *render = CreateDownloadProgressMenu("Downloading Theme...", &progress);
     RenderShapeLinkList(render);
 
-    char *path = GetThemePath(target, GetThemeTargetLabel(target));
     int res = DownloadThemeFromUrl(CopyTextUtil(target->downloadLink), path, &progress);
     ShowDownloadResult(&progress, res);
 
     ShapeLinkDispose(&render);
-
-    free(path);
-
     return res;
 }
 
-int InstallThemeButton(Context_t *ctx){
-    ShapeLinker_t *out = CreateBaseMessagePopup("Install Queued!", "Install Queued. Exit the app to apply the theme.\nYou can exit the app by pressing the + button.");
-
-    ShapeLinkAdd(&out, RectangleCreate(POS(250, 470, 780, 50), COLOR_CARDCURSOR, 1), RectangleType);
-    ShapeLinkAdd(&out, ButtonCreate(POS(0, 0, SCREEN_W, SCREEN_H), COLOR(0,0,0,0), COLOR(0,0,0,0), COLOR(0,0,0,0), COLOR(0,0,0,0), 0, ButtonStyleFlat, NULL, NULL, exitFunc), ButtonType);
-    ShapeLinkAdd(&out, TextCenteredCreate(POS(250, 470, 780, 50), "Got it!", COLOR_WHITE, FONT_TEXT[FSize28]), TextCenteredType);
-
+int DownloadThemeButton(Context_t *ctx){
     RequestInfo_t *rI = ShapeLinkFind(ctx->all, DataType)->item;
     ThemeInfo_t *target = rI->themes;
     char *path = GetThemePath(target, GetThemeTargetLabel(target));
+    int res = DownloadThemeToPath(target, path);
+    free(path);
+    return res;
+}
 
-    int res = !(access(path, F_OK) != -1);
+static int InstallThemeAtPath(ThemeInfo_t *target, char *path){
+    int res = 0;
 
-    if (res)
-        res = DownloadThemeButton(ctx);
-    
+    if (access(path, F_OK) == -1)
+        res = DownloadThemeToPath(target, path);
+
     if (!res){
         SetInstallSlot(target->target, path);
 
+        ShapeLinker_t *out = CreateBaseMessagePopup("Install Queued!", "Install Queued. Exit the app to apply the theme.\nYou can exit the app by pressing the + button.");
+        ShapeLinkAdd(&out, RectangleCreate(POS(250, 470, 780, 50), COLOR_CARDCURSOR, 1), RectangleType);
+        ShapeLinkAdd(&out, ButtonCreate(POS(0, 0, SCREEN_W, SCREEN_H), COLOR(0,0,0,0), COLOR(0,0,0,0), COLOR(0,0,0,0), COLOR(0,0,0,0), 0, ButtonStyleFlat, NULL, NULL, exitFunc), ButtonType);
+        ShapeLinkAdd(&out, TextCenteredCreate(POS(250, 470, 780, 50), "Got it!", COLOR_WHITE, FONT_TEXT[FSize28]), TextCenteredType);
         MakeMenu(out, ButtonHandlerBExit, NULL);
+        ShapeLinkDispose(&out);
     }
 
-    ShapeLinkDispose(&out);
-
+    free(path);
     return 0;
+}
+
+int InstallThemeButton(Context_t *ctx){
+    RequestInfo_t *rI = ShapeLinkFind(ctx->all, DataType)->item;
+    return InstallThemeAtPath(rI->themes, GetThemePath(rI->themes, GetThemeTargetLabel(rI->themes)));
+}
+
+static int InstallThemeOnlyButton(Context_t *ctx){
+    RequestInfo_t *rI = ShapeLinkFind(ctx->all, DataType)->item;
+    return InstallThemeAtPath(rI->themes, GetTemporaryThemePath(rI->themes));
 }
 
 ShapeLinker_t *CreateSelectMenu(RequestInfo_t *rI){
@@ -375,16 +391,23 @@ ShapeLinker_t *CreateSelectMenu(RequestInfo_t *rI){
 
     ShapeLinkAdd(&out, ImageCreate(XIcon, POS(SCREEN_W - 100, 50, 50, 50), 0), ImageType);
 
-    ShapeLinkAdd(&out, ButtonCreate(POS(915, 110, SCREEN_W - 980, 60), COLOR_INSTALLBTN, COLOR_INSTALLBTNPRS, COLOR_WHITE, COLOR_INSTALLBTNSEL, (GetInstallButtonState()) ? 0 : BUTTON_DISABLED, ButtonStyleFlat, "Install", FONT_TEXT[FSize30], InstallThemeButton), ButtonType);
-    ShapeLinkAdd(&out, ButtonCreate(POS(915, 180, SCREEN_W - 980, 60), COLOR_DOWNLOADBTN, COLOR_DOWNLOADBTNPRS, COLOR_WHITE, COLOR_DOWNLOADBTNSEL, 0, ButtonStyleFlat, "Download Only", FONT_TEXT[FSize30], DownloadThemeButton), ButtonType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(915, 110, SCREEN_W - 980, 60), COLOR_INSTALLBTN, COLOR_INSTALLBTNPRS, COLOR_WHITE, COLOR_INSTALLBTNSEL, (GetInstallButtonState()) ? 0 : BUTTON_DISABLED, ButtonStyleFlat, "Install & Save", FONT_TEXT[FSize30], InstallThemeButton), ButtonType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(915, 180, SCREEN_W - 980, 60), COLOR_INSTALLONLYBTN, COLOR_INSTALLONLYBTNPRS, COLOR_WHITE, COLOR_INSTALLONLYBTNSEL, (GetInstallButtonState()) ? 0 : BUTTON_DISABLED, ButtonStyleFlat, "Install Only", FONT_TEXT[FSize30], InstallThemeOnlyButton), ButtonType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(915, 250, SCREEN_W - 980, 60), COLOR_DOWNLOADBTN, COLOR_DOWNLOADBTNPRS, COLOR_WHITE, COLOR_DOWNLOADBTNSEL, 0, ButtonStyleFlat, "Download Only", FONT_TEXT[FSize30], DownloadThemeButton), ButtonType);
 
-    char *info = CopyTextArgsUtil("By %s\n\nUpdated: %s\n\nID: %s\nDownloads: %d\nSaves: %d\n\nMenu: %s", target->creator, strtok(target->lastUpdated, "T"), target->id, target->dlCount, target->likeCount, GetThemeTargetLabel(target));
-    ShapeLinkAdd(&out, TextCenteredCreate(POS(920, 250, SCREEN_W - 990, 420), info, COLOR_WHITE, FONT_TEXT[FSize23]), TextBoxType);
+    char *created = CopyTextUtil(target->createdAt);
+    char *updated = CopyTextUtil(target->lastUpdated);
+    char *createdDate = strtok(created, "T");
+    char *updatedDate = strtok(updated, "T");
+    char *info = CopyTextArgsUtil("By %s\n\nCreated: %s\nUpdated: %s\n\nID: %s\nDownloads: %d\nSaves: %d\n\nMenu: %s", target->creator, createdDate, updatedDate, target->id, target->dlCount, target->likeCount, GetThemeTargetLabel(target));
+    ShapeLinkAdd(&out, TextCenteredCreate(POS(920, 320, SCREEN_W - 990, 260), info, COLOR_WHITE, FONT_TEXT[FSize23]), TextBoxType);
     if (target->description != NULL && target->description[0]) {
         ShapeLinkAdd(&out, TextCenteredCreate(POS(60, 590, SCREEN_W - 120, 82), target->description, COLOR_WHITE, FONT_TEXT[FSize23]), TextBoxType);
     }
 
     free(info);
+    free(created);
+    free(updated);
     //ShapeLinkAdd()
 
     ShapeLinkAdd(&out, rI, DataType);

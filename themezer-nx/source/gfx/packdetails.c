@@ -27,14 +27,12 @@ static int DownloadPackTheme(ThemeInfo_t *theme, DownloadProgressContext_t *prog
     return res;
 }
 
-static int EnsurePackThemeDownloaded(ThemeInfo_t *theme, DownloadProgressContext_t *progress){
-    char *path = GetThemePath(theme, GetPackThemeTargetLabel(theme));
+static int EnsurePackThemeDownloaded(ThemeInfo_t *theme, char *path, DownloadProgressContext_t *progress){
     int res = 0;
 
     if (access(path, F_OK) == -1)
         res = DownloadThemeFromUrl(CopyTextUtil(theme->downloadLink), path, progress);
 
-    free(path);
     return res;
 }
 
@@ -145,7 +143,7 @@ int DownloadPackButton(Context_t *ctx){
     return 0;
 }
 
-int InstallPackButton(Context_t *ctx){
+static int InstallPackAtPath(Context_t *ctx, bool savePermanently){
     RequestInfo_t *rI = ShapeLinkFind(ctx->all, DataType)->item;
     int selectedThemes[THEME_TARGET_COUNT];
     int selectedCount = 0;
@@ -206,14 +204,15 @@ int InstallPackButton(Context_t *ctx){
         free(message);
         RenderShapeLinkList(progress);
 
-        if (EnsurePackThemeDownloaded(theme, &progressContext)){
+        char *path = savePermanently ? GetThemePath(theme, GetPackThemeTargetLabel(theme)) : GetTemporaryThemePath(theme);
+        if (EnsurePackThemeDownloaded(theme, path, &progressContext)){
+            free(path);
             if (progressContext.cancelled)
                 break;
             failures++;
             continue;
         }
 
-        char *path = GetThemePath(theme, GetPackThemeTargetLabel(theme));
         SetInstallSlot(theme->target, path);
         free(path);
         queued++;
@@ -239,6 +238,14 @@ int InstallPackButton(Context_t *ctx){
     return 0;
 }
 
+int InstallPackButton(Context_t *ctx){
+    return InstallPackAtPath(ctx, true);
+}
+
+static int InstallPackOnlyButton(Context_t *ctx){
+    return InstallPackAtPath(ctx, false);
+}
+
 ShapeLinker_t *CreatePackDetailsMenu(ShapeLinker_t *items, RequestInfo_t *rI){
     ShapeLinker_t *out = NULL;
     const int contentX = 160;
@@ -257,8 +264,9 @@ ShapeLinker_t *CreatePackDetailsMenu(ShapeLinker_t *items, RequestInfo_t *rI){
     ShapeLinkAdd(&out, ButtonCreate(POS(contentX, topBarY, contentW, topBarH), COLOR_TOPBAR, COLOR_RED, COLOR_WHITE, COLOR_TOPBARCURSOR, 0, ButtonStyleTopStrip, "Back", FONT_TEXT[FSize25], exitFunc), ButtonType);
     ShapeLinkAdd(&out, ListGridCreate(POS(contentX, gridY, contentW, gridH), 3, 260, COLOR_MAINBG, COLOR_CARDCURSOR, COLOR_CARDCURSORPRESS, COLOR_SCROLLBAR, COLOR_SCROLLBARTHUMB, (items) ? GRID_NOSIDEESC : LIST_DISABLED, items, ThemeSelect, NULL, FONT_TEXT[FSize23]), ListGridType);
     ShapeLinkAdd(&out, RectangleCreate(POS(contentX, actionBarY, contentW, actionBarH), COLOR_TOPBAR, 1), RectangleType);
-    ShapeLinkAdd(&out, ButtonCreate(POS(contentX + 30, actionBarY + 5, 470, 50), COLOR_INSTALLBTN, COLOR_INSTALLBTNPRS, COLOR_WHITE, COLOR_INSTALLBTNSEL, GetInstallButtonState() ? 0 : BUTTON_DISABLED, ButtonStyleFlat, "Install All", FONT_TEXT[FSize25], InstallPackButton), ButtonType);
-    ShapeLinkAdd(&out, ButtonCreate(POS(contentX + contentW - 500, actionBarY + 5, 470, 50), COLOR_DOWNLOADBTN, COLOR_DOWNLOADBTNPRS, COLOR_WHITE, COLOR_DOWNLOADBTNSEL, 0, ButtonStyleFlat, "Download All", FONT_TEXT[FSize25], DownloadPackButton), ButtonType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(contentX + 30, actionBarY + 5, 280, 50), COLOR_INSTALLBTN, COLOR_INSTALLBTNPRS, COLOR_WHITE, COLOR_INSTALLBTNSEL, GetInstallButtonState() ? 0 : BUTTON_DISABLED, ButtonStyleFlat, "Install & Save", FONT_TEXT[FSize25], InstallPackButton), ButtonType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(contentX + 330, actionBarY + 5, 280, 50), COLOR_INSTALLONLYBTN, COLOR_INSTALLONLYBTNPRS, COLOR_WHITE, COLOR_INSTALLONLYBTNSEL, GetInstallButtonState() ? 0 : BUTTON_DISABLED, ButtonStyleFlat, "Install Only", FONT_TEXT[FSize25], InstallPackOnlyButton), ButtonType);
+    ShapeLinkAdd(&out, ButtonCreate(POS(contentX + 630, actionBarY + 5, 280, 50), COLOR_DOWNLOADBTN, COLOR_DOWNLOADBTNPRS, COLOR_WHITE, COLOR_DOWNLOADBTNSEL, 0, ButtonStyleFlat, "Download Only", FONT_TEXT[FSize25], DownloadPackButton), ButtonType);
     ShapeLinkAdd(&out, rI, DataType);
 
     return out;

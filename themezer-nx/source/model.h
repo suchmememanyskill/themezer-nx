@@ -37,6 +37,7 @@ typedef struct {
     char *creator;
     char *name;
     char *description;
+    char *createdAt;
     char *lastUpdated;
     char *imgLink;
     char *thumbLink;

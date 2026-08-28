@@ -8,6 +8,8 @@
 #include <errno.h>
 #include "model.h"
 
+#define TEMPORARY_INSTALL_DIR "/Themes/ThemezerNX/.tmp"
+
 typedef struct {
     char **paths;
     u8 len;
@@ -74,6 +76,14 @@ char *GetThemePath(const ThemeInfo_t *theme, const char *themeType){
 	return path;
 }
 
+char *GetTemporaryThemePath(const ThemeInfo_t *theme){
+	char *themeId = SafeFilenameText(theme->id);
+	char *path = CopyTextArgsUtil(TEMPORARY_INSTALL_DIR "/theme-%s.nxtheme", themeId);
+
+	free(themeId);
+	return path;
+}
+
 char *GetSplashPath(const SplashInfo_t *splash){
 	char *splashName = SafeFilenameText(splash->name);
 	char *creator = SafeFilenameText(splash->creator);
@@ -82,6 +92,14 @@ char *GetSplashPath(const SplashInfo_t *splash){
 
 	free(splashName);
 	free(creator);
+	free(splashId);
+	return path;
+}
+
+char *GetTemporarySplashPath(const SplashInfo_t *splash){
+	char *splashId = SafeFilenameText(splash->id);
+	char *path = CopyTextArgsUtil(TEMPORARY_INSTALL_DIR "/splash-%s.bmp", splashId);
+
 	free(splashId);
 	return path;
 }
@@ -107,12 +125,10 @@ char *GetRemoteInstallPath(const RemoteInstallInfo_t *remoteInstall){
 	return path;
 }
 
-#define REMOTE_INSTALL_TEMP_DIR "/Themes/ThemezerNX/.tmp"
-
 char *GetTemporaryRemoteInstallPath(const RemoteInstallInfo_t *remoteInstall){
 	char *quickId = SafeFilenameText(remoteInstall->quickId);
 	char *path = CopyTextArgsUtil(
-		REMOTE_INSTALL_TEMP_DIR "/remote-%s-%s.%s",
+		TEMPORARY_INSTALL_DIR "/remote-%s-%s.%s",
 		(remoteInstall->kind == RemoteInstallKindSplash) ? "splash" : "theme",
 		quickId,
 		(remoteInstall->kind == RemoteInstallKindSplash) ? "bmp" : "nxtheme"
@@ -122,8 +138,8 @@ char *GetTemporaryRemoteInstallPath(const RemoteInstallInfo_t *remoteInstall){
 	return path;
 }
 
-void CleanupTemporaryRemoteInstalls(void){
-	DIR *dir = opendir(REMOTE_INSTALL_TEMP_DIR);
+void CleanupTemporaryInstalls(void){
+	DIR *dir = opendir(TEMPORARY_INSTALL_DIR);
 	if (!dir)
 		return;
 
@@ -132,7 +148,7 @@ void CleanupTemporaryRemoteInstalls(void){
 		if (!strcmp(entry->d_name, ".") || !strcmp(entry->d_name, ".."))
 			continue;
 
-		char *path = CopyTextArgsUtil(REMOTE_INSTALL_TEMP_DIR "/%s", entry->d_name);
+		char *path = CopyTextArgsUtil(TEMPORARY_INSTALL_DIR "/%s", entry->d_name);
 		unlink(path);
 		free(path);
 	}

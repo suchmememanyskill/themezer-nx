@@ -97,7 +97,7 @@ static void CleanupActiveTransferQueue(RequestInfo_t *except){
 static char *GenLookupByQuickIdLink(const char *quickId){
     static char request[0x1200];
     request[0] = '\0';
-    const char *query = "query($quickId:String!){switch{lookupByQuickId(quickId:$quickId){__typename ... on SwitchPack{hexId name creator{username} collageThumbHash collagePreview{hdUrl thumbUrl} themes{hexId creator{username} name description updatedAt downloadCount saveCount target screenshotThumbHash screenshotPreview{hdUrl thumbUrl} downloadUrl}} ... on SwitchTheme{hexId creator{username} name description updatedAt downloadCount saveCount target screenshotThumbHash screenshotPreview{hdUrl thumbUrl} downloadUrl pack{hexId name creator{username}}} ... on SwitchSplash{hexId name creator{username} description createdAt updatedAt downloadCount saveCount previewThumbHash preview{hdUrl thumbUrl} downloadUrl quickId} ... on SwitchRemoteInstallTheme{author createdAt downloadUrl name quickId target} ... on SwitchRemoteInstallSplash{author createdAt downloadUrl name quickId}}}}";
+    const char *query = "query($quickId:String!){switch{lookupByQuickId(quickId:$quickId){__typename ... on SwitchPack{hexId name creator{username} collageThumbHash collagePreview{hdUrl thumbUrl} themes{hexId creator{username} name description createdAt updatedAt downloadCount saveCount target screenshotThumbHash screenshotPreview{hdUrl thumbUrl} downloadUrl}} ... on SwitchTheme{hexId creator{username} name description createdAt updatedAt downloadCount saveCount target screenshotThumbHash screenshotPreview{hdUrl thumbUrl} downloadUrl pack{hexId name creator{username}}} ... on SwitchSplash{hexId name creator{username} description createdAt updatedAt downloadCount saveCount previewThumbHash preview{hdUrl thumbUrl} downloadUrl quickId} ... on SwitchRemoteInstallTheme{author createdAt downloadUrl name quickId target} ... on SwitchRemoteInstallSplash{author createdAt downloadUrl name quickId}}}}";
     char *variables = NULL;
 
     cJSON *variablesJson = cJSON_CreateObject();
@@ -136,6 +136,7 @@ static int ParseTheme(ThemeInfo_t *themeInfo, cJSON *theme){
     cJSON *display_name = cJSON_GetObjectItemCaseSensitive(creator, "username");
     cJSON *name = cJSON_GetObjectItemCaseSensitive(theme, "name");
     cJSON *description = cJSON_GetObjectItemCaseSensitive(theme, "description");
+    cJSON *created_at = cJSON_GetObjectItemCaseSensitive(theme, "createdAt");
     cJSON *last_updated = cJSON_GetObjectItemCaseSensitive(theme, "updatedAt");
     cJSON *dl_count = cJSON_GetObjectItemCaseSensitive(theme, "downloadCount");
     cJSON *like_count = cJSON_GetObjectItemCaseSensitive(theme, "saveCount");
@@ -146,13 +147,14 @@ static int ParseTheme(ThemeInfo_t *themeInfo, cJSON *theme){
     cJSON *target = cJSON_GetObjectItemCaseSensitive(theme, "target");
     cJSON *pack = cJSON_GetObjectItemCaseSensitive(theme, "pack");
 
-    if (!GetPreviewUrls(theme, "screenshotPreview", &original, &thumb) || !cJSON_IsString(thumb_hash) || !cJSON_IsNumber(dl_count) || !cJSON_IsNumber(like_count) || !cJSON_IsString(last_updated) ||
+    if (!GetPreviewUrls(theme, "screenshotPreview", &original, &thumb) || !cJSON_IsString(thumb_hash) || !cJSON_IsNumber(dl_count) || !cJSON_IsNumber(like_count) || !cJSON_IsString(created_at) || !cJSON_IsString(last_updated) ||
         !(cJSON_IsString(description) || cJSON_IsNull(description)) || !cJSON_IsString(name) || !cJSON_IsString(display_name) || !cJSON_IsString(id) || !cJSON_IsString(download) || !cJSON_IsString(target)){
         return 1;
     }
 
     themeInfo->dlCount = dl_count->valueint;
     themeInfo->likeCount = like_count->valueint;
+    themeInfo->createdAt = CopyTextUtil(created_at->valuestring);
     themeInfo->lastUpdated = CopyTextUtil(last_updated->valuestring);
     if (!cJSON_IsNull(description))
         themeInfo->description = CopyTextUtil(description->valuestring);
@@ -313,16 +315,16 @@ char *GenLink(RequestInfo_t *rI){
     }
     else if (rI->target >= 1)
     {
-        // query($target:Target,$paginationArgs:PaginationInput,$sort:ItemSort,$order:SortOrder,$query:String){switch{themes(target:$target,paginationArgs:$paginationArgs,sort:$sort,order:$order,query:$query){nodes{hexId creator{username} name description updatedAt downloadCount saveCount target screenshotThumbHash screenshotPreview{hdUrl thumbUrl} downloadUrl pack{hexId name creator{username}}}pageInfo{itemCount limit page pageCount}}}}
-        query = "query($target:Target,$paginationArgs:PaginationInput,$sort:ItemSort,$order:SortOrder,$query:String){switch{themes(target:$target,paginationArgs:$paginationArgs,sort:$sort,order:$order,query:$query){nodes{hexId creator{username} name description updatedAt downloadCount saveCount target screenshotThumbHash screenshotPreview{hdUrl thumbUrl} downloadUrl pack{hexId name creator{username}}}pageInfo{itemCount limit page pageCount}}}}";
+        // query($target:Target,$paginationArgs:PaginationInput,$sort:ItemSort,$order:SortOrder,$query:String){switch{themes(target:$target,paginationArgs:$paginationArgs,sort:$sort,order:$order,query:$query){nodes{hexId creator{username} name description createdAt updatedAt downloadCount saveCount target screenshotThumbHash screenshotPreview{hdUrl thumbUrl} downloadUrl pack{hexId name creator{username}}}pageInfo{itemCount limit page pageCount}}}}
+        query = "query($target:Target,$paginationArgs:PaginationInput,$sort:ItemSort,$order:SortOrder,$query:String){switch{themes(target:$target,paginationArgs:$paginationArgs,sort:$sort,order:$order,query:$query){nodes{hexId creator{username} name description createdAt updatedAt downloadCount saveCount target screenshotThumbHash screenshotPreview{hdUrl thumbUrl} downloadUrl pack{hexId name creator{username}}}pageInfo{itemCount limit page pageCount}}}}";
         queryIsEncoded = false;
         snprintf(variables, 0x400,"{\"target\":%s,\"paginationArgs\":{\"page\":%d,\"limit\":%d},\"sort\":\"%s\",\"order\":\"%s\",\"query\":%s}",\
             requestTarget, rI->page, rI->limit, requestSorts[rI->sort], requestOrders[rI->order], searchQuoted);
     }
     else if (rI->target == 0)
     {
-        // query($paginationArgs:PaginationInput,$sort:ItemSort,$order:SortOrder,$query:String){switch{packs(paginationArgs:$paginationArgs,sort:$sort,order:$order,query:$query){nodes{hexId creator{username} name description updatedAt downloadCount saveCount collageThumbHash collagePreview{hdUrl thumbUrl} themes{hexId creator{username} name description updatedAt downloadCount saveCount target screenshotThumbHash screenshotPreview{hdUrl thumbUrl} downloadUrl}}pageInfo{itemCount limit page pageCount}}}}
-        query = "query($paginationArgs:PaginationInput,$sort:ItemSort,$order:SortOrder,$query:String){switch{packs(paginationArgs:$paginationArgs,sort:$sort,order:$order,query:$query){nodes{hexId creator{username} name description updatedAt downloadCount saveCount collageThumbHash collagePreview{hdUrl thumbUrl} themes{hexId creator{username} name description updatedAt downloadCount saveCount target screenshotThumbHash screenshotPreview{hdUrl thumbUrl} downloadUrl}}pageInfo{itemCount limit page pageCount}}}}";
+        // query($paginationArgs:PaginationInput,$sort:ItemSort,$order:SortOrder,$query:String){switch{packs(paginationArgs:$paginationArgs,sort:$sort,order:$order,query:$query){nodes{hexId creator{username} name description updatedAt downloadCount saveCount collageThumbHash collagePreview{hdUrl thumbUrl} themes{hexId creator{username} name description createdAt updatedAt downloadCount saveCount target screenshotThumbHash screenshotPreview{hdUrl thumbUrl} downloadUrl}}pageInfo{itemCount limit page pageCount}}}}
+        query = "query($paginationArgs:PaginationInput,$sort:ItemSort,$order:SortOrder,$query:String){switch{packs(paginationArgs:$paginationArgs,sort:$sort,order:$order,query:$query){nodes{hexId creator{username} name description updatedAt downloadCount saveCount collageThumbHash collagePreview{hdUrl thumbUrl} themes{hexId creator{username} name description createdAt updatedAt downloadCount saveCount target screenshotThumbHash screenshotPreview{hdUrl thumbUrl} downloadUrl}}pageInfo{itemCount limit page pageCount}}}}";
         queryIsEncoded = false;
         snprintf(variables, 0x400, "{\"paginationArgs\":{\"page\":%d,\"limit\":%d},\"sort\":\"%s\",\"order\":\"%s\",\"query\":%s}",\
             rI->page, rI->limit, requestSorts[rI->sort], requestOrders[rI->order], searchQuoted);
@@ -776,6 +778,7 @@ void FreeRequestContent(RequestInfo_t *rI){
             NNFREE(rI->themes[i].creator);
             NNFREE(rI->themes[i].name);
             NNFREE(rI->themes[i].description);
+            NNFREE(rI->themes[i].createdAt);
             NNFREE(rI->themes[i].lastUpdated);
             NNFREE(rI->themes[i].imgLink);
             NNFREE(rI->themes[i].thumbLink);
@@ -802,6 +805,7 @@ void FreeRequestContent(RequestInfo_t *rI){
                 NNFREE(rI->packs[i].themes[j].creator);
                 NNFREE(rI->packs[i].themes[j].name);
                 NNFREE(rI->packs[i].themes[j].description);
+                NNFREE(rI->packs[i].themes[j].createdAt);
                 NNFREE(rI->packs[i].themes[j].lastUpdated);
                 NNFREE(rI->packs[i].themes[j].imgLink);
                 NNFREE(rI->packs[i].themes[j].thumbLink);
