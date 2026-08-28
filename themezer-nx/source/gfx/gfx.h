@@ -60,6 +60,7 @@ int ButtonHandlerBootMenu(Context_t *ctx);
 ShapeLinker_t *CreateBootMenu(void);
 ShapeLinker_t *CreateMainMenu(ShapeLinker_t *listItems, RequestInfo_t *rI);
 bool RunMainMenu(RequestInfo_t *rI);
+void CleanupMainMenuLoad(void);
 void ResetBootMenuAction(void);
 int ConsumeBootMenuAction(void);
 bool ConsumeBootMenuBrowseRequested(void);

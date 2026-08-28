@@ -21,6 +21,7 @@ static ShapeLinker_t *CreateQuickIdLoadingMenu(){
     ShapeLinkAdd(&render, ImageCreate(screenshot, POS(0, 0, SCREEN_W, SCREEN_H), IMAGE_CLEANUPTEX), ImageType);
     ShapeLinkAdd(&render, RectangleCreate(POS(0, 0, SCREEN_W, SCREEN_H), COLOR(0,0,0,200), 1), RectangleType);
     ShapeLinkAdd(&render, TextCenteredCreate(POS(0, 0, SCREEN_W, SCREEN_H), "Looking up Quick ID...", COLOR_WHITE, FONT_TEXT[FSize45]), TextCenteredType);
+    ShapeLinkAdd(&render, TextCenteredCreate(POS(0, SCREEN_H - 90, SCREEN_W, 40), "Press B to cancel", COLOR_WHITE, FONT_TEXT[FSize23]), TextCenteredType);
 
     return render;
 }

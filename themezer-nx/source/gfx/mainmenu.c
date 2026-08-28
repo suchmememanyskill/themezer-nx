@@ -11,6 +11,7 @@ enum {
 };
 
 static volatile int mainMenuLoadState = MAIN_MENU_LOAD_NOT_STARTED;
+static volatile bool mainMenuLoadCancelRequested = false;
 static int mainMenuLoadResult = 0;
 static Thread mainMenuLoadThread;
 static bool mainMenuLoadThreadCreated = false;
@@ -30,7 +31,7 @@ bool ConsumeMainMenuReturnToBoot(void){
 }
 
 static int LoadMainMenuData(RequestInfo_t *rI){
-    return MakeJsonRequest(GenLink(rI), &rI->response);
+    return MakeJsonRequestCancelable(GenLink(rI), &rI->response, &mainMenuLoadCancelRequested);
 }
 
 static void LoadMainMenuDataThread(void *arg){
@@ -49,6 +50,7 @@ static int StartMainMenuLoad(RequestInfo_t *rI){
     }
 
     mainMenuLoadResult = 0;
+    mainMenuLoadCancelRequested = false;
     mainMenuLoadState = MAIN_MENU_LOAD_RUNNING;
     Result res = threadCreate(&mainMenuLoadThread, LoadMainMenuDataThread, rI, NULL, 0x40000, 0x2B, -2);
     if (R_FAILED(res)){
@@ -76,6 +78,23 @@ static void CloseFinishedMainMenuLoadThread(void){
     threadWaitForExit(&mainMenuLoadThread);
     threadClose(&mainMenuLoadThread);
     mainMenuLoadThreadCreated = false;
+}
+
+void CleanupMainMenuLoad(void){
+    if (!mainMenuLoadThreadCreated)
+        return;
+
+    if (mainMenuLoadState == MAIN_MENU_LOAD_RUNNING)
+        mainMenuLoadCancelRequested = true;
+
+    threadWaitForExit(&mainMenuLoadThread);
+    threadClose(&mainMenuLoadThread);
+    mainMenuLoadThreadCreated = false;
+
+    if (mainMenuLoadResult == CURLE_ABORTED_BY_CALLBACK){
+        mainMenuLoadResult = 0;
+        mainMenuLoadState = MAIN_MENU_LOAD_NOT_STARTED;
+    }
 }
 
 static void ShowMainMenuLoadError(int res){
@@ -137,6 +156,7 @@ int PrevPageButton(Context_t *ctx){
 
 static int BackToBootButton(Context_t *ctx){
     (void)ctx;
+    mainMenuLoadCancelRequested = true;
     mainMenuReturnToBoot = true;
     return -1;
 }
@@ -159,6 +179,7 @@ static int ShowSideQueueMenuIfReady(Context_t *ctx){
 
 int ButtonHandlerMainMenu(Context_t *ctx){
     if (ctx->kDown & HidNpadButton_B){
+        mainMenuLoadCancelRequested = true;
         mainMenuReturnToBoot = true;
         return -1;
     }
@@ -196,6 +217,10 @@ static int HandleMainMenuFrame(Context_t *ctx){
         int res = mainMenuLoadResult;
         CloseFinishedMainMenuLoadThread();
         mainMenuLoadState = MAIN_MENU_LOAD_NOT_STARTED;
+        if (res == CURLE_ABORTED_BY_CALLBACK){
+            mainMenuReturnToBoot = true;
+            return -1;
+        }
         ShowMainMenuLoadError(res);
         mainMenuReturnToBoot = true;
         return -1;
@@ -334,7 +359,8 @@ bool RunMainMenu(RequestInfo_t *rI){
         int res = mainMenuLoadResult;
         CloseFinishedMainMenuLoadThread();
         mainMenuLoadState = MAIN_MENU_LOAD_NOT_STARTED;
-        ShowMainMenuLoadError(res);
+        if (res != CURLE_ABORTED_BY_CALLBACK)
+            ShowMainMenuLoadError(res);
         return true;
     }
 
@@ -347,5 +373,9 @@ bool RunMainMenu(RequestInfo_t *rI){
     MakeMenu(mainMenu, ButtonHandlerMainMenu, HandleMainMenuFrame);
     ShapeLinkDispose(&mainMenu);
 
-    return ConsumeMainMenuReturnToBoot();
+    bool returnToBoot = ConsumeMainMenuReturnToBoot();
+    if (returnToBoot)
+        CleanupMainMenuLoad();
+
+    return returnToBoot;
 }

@@ -71,6 +71,7 @@ int main(int argc, char* argv[])
             break;
     }
     
+    CleanupMainMenuLoad();
     FreeRequestContent(&rI);
 
     if (themeInstallerLocation){

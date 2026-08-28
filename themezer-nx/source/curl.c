@@ -42,9 +42,10 @@ static int ShowApiError(cJSON *root);
 static void SetThemePackInfo(ThemeInfo_t *themeInfo, const char *packId, const char *packCreator, const char *packName);
 static char *CopyJsonStringLiteral(const char *text);
 static CURLM *GetTransferer(void);
-static CURLcode PerformRequest(CURL *curl, DownloadProgressContext_t *progress);
 static size_t DownloadHeaderCallback(char *buffer, size_t size, size_t nitems, void *userdata);
 static int DownloadProgressCallback(void *clientp, curl_off_t downloadTotal, curl_off_t downloadNow, curl_off_t uploadTotal, curl_off_t uploadNow);
+static int JsonRequestProgressCallback(void *clientp, curl_off_t downloadTotal, curl_off_t downloadNow, curl_off_t uploadTotal, curl_off_t uploadNow);
+static int MakeJsonRequestInternal(char *url, cJSON **response, volatile bool *cancelRequested, bool pollController);
 static void CleanupActiveTransferQueue(RequestInfo_t *except);
 static void HandleCompletedTransfer(Transfer_t *transfer, CURLcode result, Context_t *ctx);
 static bool AreTransfersFinished(RequestInfo_t *rI);
@@ -447,6 +448,10 @@ SDL_Texture *CreateThumbHashTexture(const char *encodedThumbHash){
 }
 
 #define CHUNK_SIZE 8192
+#define CONNECT_TIMEOUT_SECONDS 10L
+#define JSON_TIMEOUT_SECONDS 20L
+#define LOW_SPEED_LIMIT_BYTES 1L
+#define LOW_SPEED_TIMEOUT_SECONDS 30L
 
 static size_t write_callback(char *ptr, size_t size, size_t nmemb, void *userdata)
 {
@@ -489,8 +494,16 @@ CURL *CreateRequest(char *url, get_request_t *data){
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
         curl_easy_setopt(curl, CURLOPT_USERAGENT, "themezer-nx/" APP_VERSION);
         curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+        curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, CONNECT_TIMEOUT_SECONDS);
+        curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, LOW_SPEED_LIMIT_BYTES);
+        curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, LOW_SPEED_TIMEOUT_SECONDS);
+        curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
 
         data->buffer = malloc(CHUNK_SIZE);
+        if (!data->buffer){
+            curl_easy_cleanup(curl);
+            return NULL;
+        }
         data->buflen = CHUNK_SIZE;
 
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
@@ -550,7 +563,37 @@ static int DownloadProgressCallback(void *clientp, curl_off_t downloadTotal, cur
     return 0;
 }
 
-int MakeJsonRequest(char *url, cJSON **response){
+typedef struct {
+    volatile bool *cancelRequested;
+    bool pollController;
+} JsonRequestProgress_t;
+
+static int JsonRequestProgressCallback(void *clientp, curl_off_t downloadTotal, curl_off_t downloadNow, curl_off_t uploadTotal, curl_off_t uploadNow){
+    (void)downloadTotal;
+    (void)downloadNow;
+    (void)uploadTotal;
+    (void)uploadNow;
+
+    JsonRequestProgress_t *progress = clientp;
+    if (!progress)
+        return 0;
+
+    if (progress->cancelRequested && *progress->cancelRequested)
+        return 1;
+
+    if (progress->pollController){
+        padUpdate(&pad);
+        if (padGetButtons(&pad) & HidNpadButton_B){
+            if (progress->cancelRequested)
+                *progress->cancelRequested = true;
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+static int MakeJsonRequestInternal(char *url, cJSON **response, volatile bool *cancelRequested, bool pollController){
     get_request_t req = {0};
 
     int res;
@@ -558,9 +601,21 @@ int MakeJsonRequest(char *url, cJSON **response){
     if (!curl)
         return CURLE_FAILED_INIT;
 
-    if (!(res = PerformRequest(curl, NULL))){
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, JSON_TIMEOUT_SECONDS);
+
+    JsonRequestProgress_t progress = {cancelRequested, pollController};
+    if (cancelRequested || pollController){
+        curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, JsonRequestProgressCallback);
+        curl_easy_setopt(curl, CURLOPT_XFERINFODATA, &progress);
+        curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
+    }
+
+    if (response)
+        *response = NULL;
+
+    if (!(res = curl_easy_perform(curl))){
         if (response != NULL){
-            *response = cJSON_Parse((const char *)req.buffer);
+            *response = cJSON_ParseWithLengthOpts((const char *)req.buffer, req.len, NULL, 0);
         }
 
         printf("Buffer: %s\n", req.buffer);
@@ -571,9 +626,20 @@ int MakeJsonRequest(char *url, cJSON **response){
     return res;
 }
 
+int MakeJsonRequest(char *url, cJSON **response){
+    return MakeJsonRequestInternal(url, response, NULL, false);
+}
+
+int MakeJsonRequestCancelable(char *url, cJSON **response, volatile bool *cancelRequested){
+    return MakeJsonRequestInternal(url, response, cancelRequested, false);
+}
+
 int MakeDownloadRequest(char *url, char *path, DownloadProgressContext_t *progress){
     get_request_t req = {0};
     int res;
+
+    CleanupActiveTransferQueue(NULL);
+
     CURL *curl = CreateRequest(url, &req);
     if (!curl)
         return CURLE_FAILED_INIT;
@@ -590,7 +656,7 @@ int MakeDownloadRequest(char *url, char *path, DownloadProgressContext_t *progre
         curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
     }
 
-    if (!(res = PerformRequest(curl, progress))){
+    if (!(res = curl_easy_perform(curl))){
         long responseCode = 0;
         char *contentType = NULL;
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &responseCode);
@@ -639,58 +705,6 @@ int MakeDownloadRequest(char *url, char *path, DownloadProgressContext_t *progre
     free(req.buffer);
     curl_easy_cleanup(curl);
     return res;
-}
-
-static CURLcode PerformRequest(CURL *curl, DownloadProgressContext_t *progress){
-    CleanupActiveTransferQueue(NULL);
-
-    CURLM *transferer = GetTransferer();
-    if (!transferer)
-        return CURLE_FAILED_INIT;
-
-    CURLMcode multiRes = curl_multi_add_handle(transferer, curl);
-    if (multiRes != CURLM_OK)
-        return CURLE_FAILED_INIT;
-
-    CURLcode result = CURLE_OK;
-    bool finished = false;
-    int runningHandles = 0;
-
-    do {
-        multiRes = curl_multi_perform(transferer, &runningHandles);
-
-        int msgsLeft = -1;
-        struct CURLMsg *msg;
-        while ((msg = curl_multi_info_read(transferer, &msgsLeft))){
-            if (msg->msg != CURLMSG_DONE)
-                continue;
-
-            if (msg->easy_handle == curl){
-                result = msg->data.result;
-                curl_multi_remove_handle(transferer, curl);
-                finished = true;
-            }
-            else {
-                char *privateData = NULL;
-                curl_easy_getinfo(msg->easy_handle, CURLINFO_PRIVATE, &privateData);
-                if (privateData)
-                    HandleCompletedTransfer((Transfer_t *)privateData, msg->data.result, NULL);
-            }
-        }
-
-        if (finished || multiRes != CURLM_OK)
-            break;
-
-        int numfds = 0;
-        multiRes = curl_multi_wait(transferer, NULL, 0, progress ? 100 : 1000, &numfds);
-    } while (multiRes == CURLM_OK);
-
-    if (!finished){
-        curl_multi_remove_handle(transferer, curl);
-        return (multiRes == CURLM_OK) ? CURLE_FAILED_INIT : CURLE_BAD_FUNCTION_ARGUMENT;
-    }
-
-    return result;
 }
 
 static void ShowRequestErrorPopup(char *title, char *message){
@@ -988,9 +1002,11 @@ int LookupByQuickId(const char *quickId, RequestInfo_t *rI, QuickIdLookupType_t 
 
     *lookupType = QuickIdLookupNone;
 
-    int res = MakeJsonRequest(GenLookupByQuickIdLink(quickId), &rI->response);
+    volatile bool cancelRequested = false;
+    int res = MakeJsonRequestInternal(GenLookupByQuickIdLink(quickId), &rI->response, &cancelRequested, true);
     if (res){
-        ShowConnErrMenu(res);
+        if (res != CURLE_ABORTED_BY_CALLBACK)
+            ShowConnErrMenu(res);
         return res;
     }
 

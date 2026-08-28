@@ -27,6 +27,7 @@ int InitCurlSession(void);
 void CleanupCurlSession(void);
 ShapeLinker_t *GenListItemsFromJson(cJSON *json);
 int MakeJsonRequest(char *url, cJSON **response);
+int MakeJsonRequestCancelable(char *url, cJSON **response, volatile bool *cancelRequested);
 char *GenLink(RequestInfo_t *rI);
 ShapeLinker_t *GenListItemList(RequestInfo_t *rI);
 int GenThemeArray(RequestInfo_t *rI);
