@@ -20,16 +20,16 @@ const char *requestTargets[] = {
 };
 
 const char *requestSorts[] = {
-    "TRENDING",
-    "CREATED",
-    "UPDATED",
-    "DOWNLOADS",
-    "SAVES"
+    "Trending",
+    "Created",
+    "Updated",
+    "Downloads",
+    "Saves"
 };
 
 const char *requestOrders[] = {
-    "DESC",
-    "ASC"
+    "Desc",
+    "Asc"
 };
 
 static int GetPreviewUrls(cJSON *item, const char *fieldName, cJSON **original, cJSON **thumb);
