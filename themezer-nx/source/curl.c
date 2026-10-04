@@ -308,9 +308,9 @@ char *GenLink(RequestInfo_t *rI){
     bool queryIsEncoded = true;
     if (rI->target == SPLASH_TARGET_INDEX)
     {
-        query = "query($paginationArgs:PaginationInput,$sort:ItemSort,$order:SortOrder,$query:String,$includeNSFW:Boolean!){switch{splashes(paginationArgs:$paginationArgs,sort:$sort,order:$order,query:$query,includeNSFW:$includeNSFW){nodes{hexId creator{username} name description createdAt updatedAt downloadCount saveCount previewThumbHash preview{hdUrl thumbUrl} downloadUrl quickId}pageInfo{itemCount limit page pageCount}}}}";
+        query = "query($paginationArgs:PaginationInput,$sort:ItemSort,$order:SortOrder,$query:String){switch{splashes(paginationArgs:$paginationArgs,sort:$sort,order:$order,query:$query){nodes{hexId creator{username} name description createdAt updatedAt downloadCount saveCount previewThumbHash preview{hdUrl thumbUrl} downloadUrl quickId}pageInfo{itemCount limit page pageCount}}}}";
         queryIsEncoded = false;
-        snprintf(variables, 0x400, "{\"paginationArgs\":{\"page\":%d,\"limit\":%d},\"sort\":\"%s\",\"order\":\"%s\",\"query\":%s,\"includeNSFW\":false}",\
+        snprintf(variables, 0x400, "{\"paginationArgs\":{\"page\":%d,\"limit\":%d},\"sort\":\"%s\",\"order\":\"%s\",\"query\":%s}",\
             rI->page, rI->limit, requestSorts[rI->sort], requestOrders[rI->order], searchQuoted);
     }
     else if (rI->target >= 1)
